@@ -629,9 +629,9 @@ const Services = ({ onOpenEnquiry, phone }) => {
 
   // Title -> role value map (backend param unchanged)
   const valueMap = {
-    "Driver Job Registration": "driver",
-    "Cleaner Job Registration": "cleaner",
-    "Mechanic Job Registration": "mechanic",
+    "Driver job Registration": "driver",
+    "Cleaner vendor Registration": "cleaner",
+    "Mechanic vendor Registration": "mechanic",
     "Temporary Bus Provider ": "vendor",
     "Parcel Partner Registration": "parcel",
     "Hotel Vendor Registration": "restaurant",
