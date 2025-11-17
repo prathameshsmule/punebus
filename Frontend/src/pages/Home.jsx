@@ -535,7 +535,7 @@ const Services = ({ onOpenEnquiry, phone }) => {
     },
     {
       icon: Bus,
-      title: "Temporary Bus Provider Registration",
+      title: "Temporary Bus Provider ",
       subtitle: "Agency/Owner: apni bus list karein",
       features: [
         "Green-clearance certified preferred",
