@@ -72,7 +72,7 @@ export default function Footer() {
                   Register
                 </a>
               </li>
-              
+
               <li style={{ marginBottom: "0.75rem" }}>
                 <a
                   href="#contact"
@@ -144,8 +144,13 @@ export default function Footer() {
                   }}
                   aria-hidden="true"
                 />
-               <span>Unit 101, Oxford Towers,<br> Airport Road, Bangalore, <br>Karnataka 560008</span>
-
+                <span>
+                  Unit 101, Oxford Towers,
+                  <br />
+                  Airport Road, Bangalore,
+                  <br />
+                  Karnataka 560008
+                </span>
               </div>
             </div>
           </div>
