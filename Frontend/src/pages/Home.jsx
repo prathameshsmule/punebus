@@ -519,7 +519,7 @@ const Services = ({ onOpenEnquiry, phone }) => {
     },
     {
       icon: Wrench,
-      title: "Cleaner Job Registration",
+      title: "Cleaner Vendor Registration",
       subtitle: "Bus cleaning/attendant ke liye apply",
       features: ["Spot cleaning & full wash roles", "Daily/Monthly openings"],
       color: "#3b82f6",
@@ -527,7 +527,7 @@ const Services = ({ onOpenEnquiry, phone }) => {
     },
     {
       icon: Navigation,
-      title: "Mechanic Job Registration",
+      title: "Mechanic Vendor Registration",
       subtitle: "On-road/Depot mechanic positions",
       features: ["24/7 emergency support roles", "Quick repair assignments"],
       color: "#10b981",
@@ -573,7 +573,7 @@ const Services = ({ onOpenEnquiry, phone }) => {
     "Driver Job Registration": "driver",
     "Cleaner Job Registration": "cleaner",
     "Mechanic Job Registration": "mechanic",
-    "Temporary Bus Provider Registration": "vendor",
+    "Temporary Bus Provider ": "vendor",
     "Parcel Partner Registration": "parcel",
     "Hotel Vendor Registration": "restaurant",
   };
