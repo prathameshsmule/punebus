@@ -381,23 +381,27 @@ const Hero = ({ onOpenEnquiry }) => {
 
 /* ---------------------------
    Video Showcase Section
+   (PLATINUM video removed, "UPCOMING" logo added)
 ----------------------------*/
 const VideoShowcase = () => {
   const videos = [
     {
+      type: "video",
       src: silverVideo,
       title: "SILVER PACKAGE",
       description: "(BASIC PLAN)",
     },
     {
+      type: "video",
       src: GoldVideo,
       title: "GOLD PACKAGE",
       description: "(PREMIUM PLAN)",
     },
     {
-      src: silverVideo,
+      type: "upcoming", // 👈 yeh ab video nahi hai, upcoming card hai
+      src: null,
       title: "PLATINUM PACKAGE",
-      description: "(ELITE PLAN)",
+      description: "(COMING SOON)",
     },
   ];
 
@@ -455,21 +459,76 @@ const VideoShowcase = () => {
                     overflow: "hidden",
                   }}
                 >
-                  <video
-                    src={video.src}
-                    controls
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                    aria-label={video.title}
-                  >
-                    Your browser does not support the video tag.
-                  </video>
+                  {video.type === "video" ? (
+                    <video
+                      src={video.src}
+                      controls
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                      aria-label={video.title}
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  ) : (
+                    // 👇 Platinum ke liye "UPCOMING" logo-style placeholder
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background:
+                          "radial-gradient(circle at top, #0f172a 0%, #020617 70%)",
+                        color: "#e5e7eb",
+                        textAlign: "center",
+                        padding: "1.5rem",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 80,
+                          height: 80,
+                          borderRadius: "999px",
+                          border: "3px solid #38bdf8",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          marginBottom: "1rem",
+                          fontWeight: 800,
+                          fontSize: "0.8rem",
+                          letterSpacing: "0.12em",
+                        }}
+                      >
+                        UPCOMING
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "1.2rem",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Platinum Package
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "0.95rem",
+                          opacity: 0.8,
+                          marginTop: "0.3rem",
+                        }}
+                      >
+                        Video launching soon
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div style={{ padding: "1.5rem" }}>
                   <h3
