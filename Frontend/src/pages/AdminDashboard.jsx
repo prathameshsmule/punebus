@@ -98,7 +98,7 @@ const AdminDashboard = () => {
   // fetch stats
   const fetchStats = async () => {
     try {
-      const res = await api.get("/api/admin/stats");
+      const res = await api.get("/admin/stats");
       setStats(res.data);
     } catch (err) {
       console.error("fetchStats:", err);
@@ -116,7 +116,7 @@ const AdminDashboard = () => {
     try {
       const roleParam = role === "all" ? "all" : role;
       const qp = new URLSearchParams({ page: pageParam, limit, search: searchParam || "" });
-      const res = await api.get(`/api/admin/list/${roleParam}?${qp.toString()}`);
+      const res = await api.get(`/admin/list/${roleParam}?${qp.toString()}`);
       setUsers(res.data.users || []);
       setTotal(res.data.total || 0);
     } catch (err) {
@@ -133,7 +133,7 @@ const AdminDashboard = () => {
     setLoadingEnquiries(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await api.get("/api/enquiry", {
+      const res = await api.get("/enquiry", {
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
       });
 
@@ -180,7 +180,7 @@ const AdminDashboard = () => {
     setLoadingSubscriptions(true);
     try {
       const qp = new URLSearchParams({ page: pageParam, limit: subLimit, search: searchParam || "" });
-      const res = await api.get(`/api/admin/subscriptions?${qp.toString()}`);
+      const res = await api.get(`/admin/subscriptions?${qp.toString()}`);
       if (res?.data) {
         setSubscriptions(res.data.subscriptions || []);
         setSubTotal(res.data.total || 0);
@@ -235,7 +235,7 @@ const AdminDashboard = () => {
     try {
       const token = localStorage.getItem("token");
       const payload = { ...subscriptionForm, durationMonths: parseInt(subscriptionForm.durationMonths, 10) };
-      const res = await api.post("/api/admin/subscription", payload, {
+      const res = await api.post("/admin/subscription", payload, {
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -265,7 +265,7 @@ const AdminDashboard = () => {
   const handleDeleteSubscription = async (id) => {
     if (!window.confirm("Delete this subscription?")) return;
     try {
-      await api.delete(`/api/admin/subscription/${id}`);
+      await api.delete(`/admin/subscription/${id}`);
       alert("Subscription deleted");
       fetchSubscriptions(subPage, subSearch);
       fetchStats();
@@ -291,7 +291,7 @@ const AdminDashboard = () => {
     try {
       const token = localStorage.getItem("token");
       const res = await api.put(
-        `/api/enquiry/${id}/status`,
+        `/enquiry/${id}/status`,
         { status: newStatus },
         {
           headers: {
@@ -319,7 +319,7 @@ const AdminDashboard = () => {
   const handleDeleteEnquiry = async (id) => {
     if (!window.confirm("Are you sure you want to delete this enquiry?")) return;
     try {
-      await api.delete(`/api/enquiry/${id}`);
+      await api.delete(`/enquiry/${id}`);
       setEnquiries((prev) => prev.filter((e) => e._id !== id));
       fetchStats();
       alert("Enquiry deleted");
@@ -332,7 +332,7 @@ const AdminDashboard = () => {
   const handleCreateUser = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.post("/api/admin/user", newUser);
+      const res = await api.post("/admin/user", newUser);
       alert(res.data.message || "User created");
       setNewUser({ name: "", phone: "", email: "", role: "driver", AddharNo: "", address: "", password: "" });
       setShowAddForm(false);
@@ -356,7 +356,7 @@ const AdminDashboard = () => {
     try {
       const updates = { ...editingUser };
       if (!updates.password) delete updates.password;
-      const res = await api.put(`/api/admin/user/${editingUser._id}`, updates);
+      const res = await api.put(`/admin/user/${editingUser._id}`, updates);
       alert(res.data.message || "User updated");
       setShowEditModal(false);
       setEditingUser(null);
@@ -377,7 +377,7 @@ const AdminDashboard = () => {
   const confirmDelete = async () => {
     if (!deletingUser) return;
     try {
-      const res = await api.delete(`/api/admin/user/${deletingUser._id}`);
+      const res = await api.delete(`/admin/user/${deletingUser._id}`);
       alert(res.data.message || "User deleted");
       setShowDeleteModal(false);
       setDeletingUser(null);
