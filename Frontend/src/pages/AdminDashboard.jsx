@@ -1,6 +1,9 @@
 // src/pages/AdminDashboard.jsx
 import React, { useEffect, useState, useRef } from "react";
 import api from "../api/apiClient";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 const ROLES = ["all", "driver", "vendor", "mechanic", "cleaner", "admin", "restaurant", "parcel"];
 
@@ -398,6 +401,7 @@ const AdminDashboard = () => {
     setSearch("");
     setShowEnquiries(false);
     setShowAddForm(false);
+    setShowSubscriptionsPanel(false);
   };
 
   const toggleEnquiries = () => {
@@ -469,6 +473,179 @@ const AdminDashboard = () => {
       parcel: "#0ea5e9"
     };
     return colors[role] || "#6b7280";
+  };
+
+  // ----------------------------
+  // Export helpers (PDF & Excel)
+  // ----------------------------
+
+  const exportToPDF = (title, columns, rows, fileName) => {
+    if (!rows || rows.length === 0) {
+      alert("No data to export");
+      return;
+    }
+    const doc = new jsPDF();
+    doc.text(title, 14, 16);
+    doc.autoTable({
+      head: [columns],
+      body: rows,
+      startY: 22,
+      styles: { fontSize: 8 }
+    });
+    doc.save(fileName);
+  };
+
+  const exportToExcel = (columns, rows, fileName) => {
+    if (!rows || rows.length === 0) {
+      alert("No data to export");
+      return;
+    }
+    const data = [columns, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+    XLSX.writeFile(wb, fileName);
+  };
+
+  // Users export
+  const handleExportUsersPDF = () => {
+    const cols = ["Name", "Phone", "Email", "Role", "AddharNo", "Address"];
+    const rows = users.map((u) => [
+      u.name,
+      u.phone,
+      u.email || "-",
+      u.role,
+      u.AddharNo || "-",
+      u.address || "-"
+    ]);
+    exportToPDF(`${roleLabel(activeTab || "all")} Users`, cols, rows, `users-${activeTab || "all"}.pdf`);
+  };
+
+  const handleExportUsersExcel = () => {
+    const cols = ["Name", "Phone", "Email", "Role", "AddharNo", "Address"];
+    const rows = users.map((u) => [
+      u.name,
+      u.phone,
+      u.email || "-",
+      u.role,
+      u.AddharNo || "-",
+      u.address || "-"
+    ]);
+    exportToExcel(cols, rows, `users-${activeTab || "all"}.xlsx`);
+  };
+
+  // Enquiries export
+  const handleExportEnquiriesPDF = () => {
+    const cols = [
+      "Company",
+      "Contact Person",
+      "Contact No.",
+      "Email",
+      "Membership",
+      "Company Details",
+      "Company Address",
+      "Address",
+      "Fleet",
+      "Date",
+      "Status"
+    ];
+    const rows = enquiries.map((eq) => [
+      eq.companyName,
+      eq.contactPersonName,
+      eq.contactNo,
+      eq.email,
+      eq.membership,
+      eq.companyDetails,
+      eq.companyAddress,
+      eq.address,
+      eq.numberOfFleet ?? "-",
+      eq.createdAt ? new Date(eq.createdAt).toLocaleString() : "-",
+      eq.status
+    ]);
+    exportToPDF("Enquiries", cols, rows, "enquiries.pdf");
+  };
+
+  const handleExportEnquiriesExcel = () => {
+    const cols = [
+      "Company",
+      "Contact Person",
+      "Contact No.",
+      "Email",
+      "Membership",
+      "Company Details",
+      "Company Address",
+      "Address",
+      "Fleet",
+      "Date",
+      "Status"
+    ];
+    const rows = enquiries.map((eq) => [
+      eq.companyName,
+      eq.contactPersonName,
+      eq.contactNo,
+      eq.email,
+      eq.membership,
+      eq.companyDetails,
+      eq.companyAddress,
+      eq.address,
+      eq.numberOfFleet ?? "-",
+      eq.createdAt ? new Date(eq.createdAt).toLocaleString() : "-",
+      eq.status
+    ]);
+    exportToExcel(cols, rows, "enquiries.xlsx");
+  };
+
+  // Subscriptions export
+  const handleExportSubscriptionsPDF = () => {
+    const cols = [
+      "Name",
+      "Phone",
+      "Email",
+      "Plan",
+      "Duration (months)",
+      "Start Date",
+      "End Date",
+      "Status",
+      "Notes"
+    ];
+    const rows = subscriptions.map((s) => [
+      s.name,
+      s.phone,
+      s.email || "-",
+      s.plan,
+      s.durationMonths,
+      s.startDate ? new Date(s.startDate).toLocaleDateString() : "-",
+      s.endDate ? new Date(s.endDate).toLocaleDateString() : "-",
+      s.status,
+      s.notes || ""
+    ]);
+    exportToPDF("Subscriptions", cols, rows, "subscriptions.pdf");
+  };
+
+  const handleExportSubscriptionsExcel = () => {
+    const cols = [
+      "Name",
+      "Phone",
+      "Email",
+      "Plan",
+      "Duration (months)",
+      "Start Date",
+      "End Date",
+      "Status",
+      "Notes"
+    ];
+    const rows = subscriptions.map((s) => [
+      s.name,
+      s.phone,
+      s.email || "-",
+      s.plan,
+      s.durationMonths,
+      s.startDate ? new Date(s.startDate).toLocaleDateString() : "-",
+      s.endDate ? new Date(s.endDate).toLocaleDateString() : "-",
+      s.status,
+      s.notes || ""
+    ]);
+    exportToExcel(cols, rows, "subscriptions.xlsx");
   };
 
   // ----------------------------
@@ -854,9 +1031,9 @@ const AdminDashboard = () => {
         {/* Subscriptions Panel */}
         {showSubscriptionsPanel && (
           <div style={{ background: "white", borderRadius: 12, padding: 16, marginBottom: 16, border: "1px solid #e5e7eb" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
               <h3 style={{ fontSize: 16, fontWeight: 700 }}>Subscriptions</h3>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <form onSubmit={handleSubSearchSubmit} style={{ display: "flex", gap: 8 }}>
                   <input
                     placeholder="Search subscriptions..."
@@ -869,6 +1046,14 @@ const AdminDashboard = () => {
                   </button>
                 </form>
                 <div style={{ fontSize: 13, color: "#6b7280" }}>{loadingSubscriptions ? "Loading..." : `${subTotal} total`}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button type="button" onClick={handleExportSubscriptionsPDF} style={exportBtnStyle}>
+                    Download PDF
+                  </button>
+                  <button type="button" onClick={handleExportSubscriptionsExcel} style={exportBtnStyle}>
+                    Download Excel
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1020,9 +1205,19 @@ const AdminDashboard = () => {
         {/* Enquiries Panel */}
         {showEnquiries && (
           <div style={{ background: "white", borderRadius: 12, padding: 16, marginBottom: 16, border: "1px solid #e5e7eb" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
               <h3 style={{ fontSize: 16, fontWeight: 700 }}>Enquiries</h3>
-              <div style={{ fontSize: 13, color: "#6b7280" }}>{loadingEnquiries ? "Loading..." : `${enquiries.length} enquiries`}</div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ fontSize: 13, color: "#6b7280" }}>{loadingEnquiries ? "Loading..." : `${enquiries.length} enquiries`}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button type="button" onClick={handleExportEnquiriesPDF} style={exportBtnStyle}>
+                    Download PDF
+                  </button>
+                  <button type="button" onClick={handleExportEnquiriesExcel} style={exportBtnStyle}>
+                    Download Excel
+                  </button>
+                </div>
+              </div>
             </div>
 
             {loadingEnquiries ? (
@@ -1105,8 +1300,16 @@ const AdminDashboard = () => {
         {/* Users table / pagination / modals */}
         {activeTab && (
           <div style={{ background: "white", borderRadius: 12, boxShadow: "0 4px 6px rgba(0,0,0,0.04)", overflow: "hidden", border: "1px solid #e5e7eb" }}>
-            <div style={{ padding: 16, borderBottom: "1px solid #e5e7eb" }}>
+            <div style={{ padding: 16, borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1f2937" }}>{roleLabel(activeTab)} List</h3>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <button type="button" onClick={handleExportUsersPDF} style={exportBtnStyle}>
+                  Download PDF
+                </button>
+                <button type="button" onClick={handleExportUsersExcel} style={exportBtnStyle}>
+                  Download Excel
+                </button>
+              </div>
             </div>
             {loading ? (
               <div style={{ textAlign: "center", padding: 28, color: "#6b7280" }}>Loading users...</div>
@@ -1407,7 +1610,15 @@ const deleteBtnStyle = {
   fontSize: 13,
   fontWeight: 700
 };
+const exportBtnStyle = {
+  padding: "6px 10px",
+  background: "#e0f2fe",
+  color: "#0369a1",
+  border: "none",
+  borderRadius: 8,
+  cursor: "pointer",
+  fontSize: 13,
+  fontWeight: 700
+};
 
 export default AdminDashboard;
-
-
