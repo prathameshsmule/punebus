@@ -144,7 +144,7 @@ export default function Footer() {
                   }}
                   aria-hidden="true"
                 />
-                <span>Pune, Maharashtra, India</span>
+                <span>Unit 101, Oxford Towers, Airport Road, Bangalore, Karnataka 560008</span>
               </div>
             </div>
           </div>
