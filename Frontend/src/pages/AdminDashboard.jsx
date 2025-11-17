@@ -1047,9 +1047,7 @@ const AdminDashboard = () => {
                 </form>
                 <div style={{ fontSize: 13, color: "#6b7280" }}>{loadingSubscriptions ? "Loading..." : `${subTotal} total`}</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <button type="button" onClick={handleExportSubscriptionsPDF} style={exportBtnStyle}>
-                    Download PDF
-                  </button>
+                 
                   <button type="button" onClick={handleExportSubscriptionsExcel} style={exportBtnStyle}>
                     Download Excel
                   </button>
@@ -1210,9 +1208,7 @@ const AdminDashboard = () => {
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <div style={{ fontSize: 13, color: "#6b7280" }}>{loadingEnquiries ? "Loading..." : `${enquiries.length} enquiries`}</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <button type="button" onClick={handleExportEnquiriesPDF} style={exportBtnStyle}>
-                    Download PDF
-                  </button>
+                 
                   <button type="button" onClick={handleExportEnquiriesExcel} style={exportBtnStyle}>
                     Download Excel
                   </button>
@@ -1303,9 +1299,7 @@ const AdminDashboard = () => {
             <div style={{ padding: 16, borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1f2937" }}>{roleLabel(activeTab)} List</h3>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                <button type="button" onClick={handleExportUsersPDF} style={exportBtnStyle}>
-                  Download PDF
-                </button>
+               
                 <button type="button" onClick={handleExportUsersExcel} style={exportBtnStyle}>
                   Download Excel
                 </button>
