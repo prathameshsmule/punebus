@@ -79,7 +79,8 @@ const Register = () => {
     setMsg(null);
 
     try {
-      const res = await api.post("/api/auth/register", form);
+      // const res = await api.post("/api/auth/register", form);
+      const res = await api.post("/auth/register", form);
       const successText = res?.data?.message || "Registered successfully!";
       setMsg({ type: "success", text: successText });
       setShowSuccessPopup(true);
