@@ -144,7 +144,8 @@ export default function Footer() {
                   }}
                   aria-hidden="true"
                 />
-                <span>Unit 101, Oxford Towers,<br> Airport Road, Bangalore, <br>Karnataka 560008</span>
+               <span>Unit 101, Oxford Towers,<br> Airport Road, Bangalore, <br>Karnataka 560008</span>
+
               </div>
             </div>
           </div>
