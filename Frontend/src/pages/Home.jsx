@@ -6,7 +6,7 @@ import mechanicImg from "../assets/mechanic.jpg";
 import replacementBusImg from "../assets/replce_bus.jpg";
 import parcelImg from "../assets/parcel.jpg";
 import silverVideo from "../assets/Video/silver.mp4";
-import GoldVideo from "../assets/video/gold_pakage.mp4";
+import GoldVideo from "../assets/Video/gold_pakage.mp4";
 import homepageImg from "../assets/homepage.png";
 import restorentImg from "../assets/restorent.jpg";
 
