@@ -109,7 +109,7 @@ export default function EnquiryForm({ onSuccess } = {}) {
         numberOfFleet: form.fleetCount === "" ? undefined : Number(form.fleetCount),
       };
 
-      const res = await api.post("/api/enquiry", payload);
+      const res = await api.post("/enquiry", payload);
       const data = res?.data || {};
 
       if (data && Array.isArray(data.errors)) {
