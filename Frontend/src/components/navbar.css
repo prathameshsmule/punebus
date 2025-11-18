@@ -46,14 +46,50 @@ body{margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Sego
   font-size:1.45rem;
   font-weight:800;
   letter-spacing:0.6px;
+  
 }
+
+/* brand link + logo image */
+.brand-link{
+  display:flex;
+  align-items:center;
+  text-decoration:none;
+  gap:0.55rem;
+}
+
+/* logo – bigger, rounded */
+.brand-logo{
+  height:56px;
+  width:56px;
+  border-radius:50%;
+  object-fit:cover;
+  display:block;
+  border:2px solid rgba(255,255,255,0.9);
+  box-shadow:0 4px 12px rgba(0,0,0,0.35);
+  background-color: white;
+}
+
+/* 🔤 subtitle text: "PuneBus" */
+.brand-title{
+  color:#ffffff;
+  font-weight:800;
+  letter-spacing:0.08em;
+  font-size:1.35rem;
+  text-transform:uppercase;
+  text-shadow:1px 1px 2px rgba(0,0,0,0.35);
+}
+
+/* still keep hover on container */
 .nav .brand a{
   color:#fff;
   text-decoration:none;
   transition:transform .25s, text-shadow .25s;
   text-shadow:1px 1px 2px rgba(0,0,0,0.18);
 }
-.nav .brand a:hover{ transform:translateY(-2px) scale(1.02); text-shadow:2px 2px 6px rgba(0,0,0,0.25); }
+.nav .brand a:hover{
+  transform:translateY(-2px) scale(1.02);
+  text-shadow:2px 2px 6px rgba(0,0,0,0.25);
+}
 
 /* ====== Links ====== */
 .nav .links{
@@ -282,6 +318,15 @@ body{margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Sego
   .nav .links{ gap:.6rem; }
   .btn-enquiry{ padding:.55rem .9rem; font-size:.92rem; }
   .modal-box{ max-width:94%; }
+
+  .brand-logo{
+    height:48px;
+    width:48px;
+  }
+  .brand-title{
+    font-size:1.2rem;
+    letter-spacing:0.06em;
+  }
 }
 
 /* mobile */
@@ -293,9 +338,7 @@ body{margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Sego
     flex-direction:column;
     gap:0;
     margin-top:.8rem;
-    /* MOBILE MENU BACKGROUND: set to solid black for clear contrast */
     background: #000;
-    /* If you prefer slight translucency, use: background: rgba(0,0,0,0.9); */
     border-radius:12px;
     padding:.6rem;
     position: absolute;
@@ -306,7 +349,6 @@ body{margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Sego
     transform-origin: top center;
     transition: transform .28s cubic-bezier(.2,.9,.3,1), opacity .22s;
   }
-  /* when active, show full width panel */
   .nav .links.active{
     display:flex;
     transform: translateY(0);
@@ -314,9 +356,16 @@ body{margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Sego
   }
   .nav .links a{ width:100%; text-align:center; padding:.8rem; margin:.25rem 0; color:#fff; }
 
-  /* make logout/enquiry full width for easier tapping */
   .nav .btn-logout{ width:100%; justify-content:center; }
   .btn-enquiry{ width:100%; justify-content:center; padding:.75rem; border-radius:12px; font-weight:700; }
+
+  .brand-logo{
+    height:44px;
+    width:44px;
+  }
+  .brand-title{
+    font-size:1.1rem;
+  }
 }
 
 /* very small screens / portrait phones */
@@ -333,6 +382,14 @@ body{margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Sego
   .modal-box{ max-width:98%; margin: 8px; }
   .modal-content{ padding:.75rem; max-height: calc(100vh - 90px); border-radius:8px; }
   .mobile-toggle{ width:44px; height:44px; }
+
+  .brand-logo{
+    height:38px;
+    width:38px;
+  }
+  .brand-title{
+    font-size:1rem;
+  }
 }
 
 /* ensure modal content is reachable with keyboard on very small heights */
@@ -344,7 +401,6 @@ body{margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Sego
 /* ====== Misc / fallback ====== */
 .btn-enquiry:hover{ opacity:.98; }
 
-/* focus-visible helpers for accessibility */
 a:focus, button:focus {
   outline: none;
   box-shadow: 0 0 0 4px rgba(255,255,255,0.06);
