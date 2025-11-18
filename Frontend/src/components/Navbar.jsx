@@ -1,19 +1,20 @@
-import React, { useEffect, useState, useRef } from 'react';
-import ReactDOM from 'react-dom';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import './navbar.css';
+import React, { useEffect, useState, useRef } from "react";
+import ReactDOM from "react-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import "./navbar.css";
 import EnquiryForm from "../pages/EnquiryForm";
+import puneLogo from "../assets/logo.png"; // 👈 logo import
 
 const ModalPortal = ({ children, onClose }) => {
   const [container] = useState(() => {
-    let root = document.getElementById('modal-root');
+    let root = document.getElementById("modal-root");
     if (!root) {
-      root = document.createElement('div');
-      root.id = 'modal-root';
+      root = document.createElement("div");
+      root.id = "modal-root";
       document.body.appendChild(root);
     }
-    const wrapper = document.createElement('div');
-    wrapper.className = 'modal-container';
+    const wrapper = document.createElement("div");
+    wrapper.className = "modal-container";
     return { root, wrapper };
   });
 
@@ -22,30 +23,47 @@ const ModalPortal = ({ children, onClose }) => {
     root.appendChild(wrapper);
 
     const prevOverflow = document.body.style.overflow;
-    const prevPaddingRight = document.body.style.paddingRight || '';
-    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
-    if (scrollBarWidth > 0) document.body.style.paddingRight = `${scrollBarWidth}px`;
-    document.body.style.overflow = 'hidden';
+    const prevPaddingRight = document.body.style.paddingRight || "";
+    const scrollBarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
+    if (scrollBarWidth > 0)
+      document.body.style.paddingRight = `${scrollBarWidth}px`;
+    document.body.style.overflow = "hidden";
 
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
 
     return () => {
-      try { root.removeChild(wrapper); } catch {}
+      try {
+        root.removeChild(wrapper);
+      } catch {}
       document.body.style.overflow = prevOverflow;
       document.body.style.paddingRight = prevPaddingRight;
-      window.removeEventListener('keydown', onKey);
+      window.removeEventListener("keydown", onKey);
     };
   }, []);
 
   const handleBackdropClick = (e) => {
-    if (e.target.classList.contains('modal-backdrop')) onClose();
+    if (e.target.classList.contains("modal-backdrop")) onClose();
   };
 
   return ReactDOM.createPortal(
-    <div className="modal-backdrop" role="dialog" aria-modal="true" onMouseDown={handleBackdropClick}>
+    <div
+      className="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={handleBackdropClick}
+    >
       <div className="modal-box" tabIndex={-1} role="document">
-        <button className="modal-close" aria-label="Close enquiry" onClick={onClose}>✕</button>
+        <button
+          className="modal-close"
+          aria-label="Close enquiry"
+          onClick={onClose}
+        >
+          ✕
+        </button>
         <div className="modal-content" onMouseDown={(e) => e.stopPropagation()}>
           {children}
         </div>
@@ -63,18 +81,21 @@ const Navbar = () => {
   const [exiting, setExiting] = useState(false);
 
   const safeParse = (key) => {
-    try { return JSON.parse(localStorage.getItem(key) || 'null'); }
-    catch { return null; }
+    try {
+      return JSON.parse(localStorage.getItem(key) || "null");
+    } catch {
+      return null;
+    }
   };
 
-  const user = safeParse('user');
-  const admin = safeParse('admin');
+  const user = safeParse("user");
+  const admin = safeParse("admin");
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('admin');
-    navigate('/');
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("admin");
+    navigate("/");
   };
 
   const toggleMobileMenu = () => setMobileMenuOpen((p) => !p);
@@ -108,7 +129,9 @@ const Navbar = () => {
   useEffect(() => {
     if (showEnquiry) {
       setTimeout(() => {
-        const el = document.querySelector('.modal-content input, .modal-content textarea, .modal-content select');
+        const el = document.querySelector(
+          ".modal-content input, .modal-content textarea, .modal-content select"
+        );
         if (el) el.focus();
       }, 80);
     }
@@ -118,34 +141,56 @@ const Navbar = () => {
     <>
       <header className="nav">
         <div className="container">
-
-          {/* Brand Text */}
+          {/* Brand Logo + Subtitle */}
           <div className="brand">
             <Link to="/" onClick={closeMobileMenu} className="brand-link">
-              PuneBus
+              <img src={puneLogo} alt="PuneBus" className="brand-logo" />
+              <span className="brand-title">PuneBus</span>
             </Link>
           </div>
 
           <div
-            className={`mobile-toggle ${mobileMenuOpen ? 'open' : ''}`}
+            className={`mobile-toggle ${mobileMenuOpen ? "open" : ""}`}
             onClick={toggleMobileMenu}
             aria-label="Toggle menu"
             role="button"
           >
-            <span></span><span></span><span></span>
+            <span></span>
+            <span></span>
+            <span></span>
           </div>
 
-          <nav className={`links ${mobileMenuOpen ? 'active' : ''}`}>
-            <Link to="/" onClick={closeMobileMenu} className={isActive('/') ? 'active' : ''}>Home</Link>
-            <Link to="/services" onClick={closeMobileMenu} className={isActive('/services') ? 'active' : ''}>Services</Link>
-            <Link to="/register" onClick={closeMobileMenu} className={isActive('/register') ? 'active' : ''}>Register</Link>
+          <nav className={`links ${mobileMenuOpen ? "active" : ""}`}>
+            <Link
+              to="/"
+              onClick={closeMobileMenu}
+              className={isActive("/") ? "active" : ""}
+            >
+              Home
+            </Link>
+            <Link
+              to="/services"
+              onClick={closeMobileMenu}
+              className={isActive("/services") ? "active" : ""}
+            >
+              Services
+            </Link>
+            <Link
+              to="/register"
+              onClick={closeMobileMenu}
+              className={isActive("/register") ? "active" : ""}
+            >
+              Register
+            </Link>
 
             {/* ✅ ADMIN — ONLY EMOJI */}
             {!admin && (
               <Link
                 to="/admin/login"
                 onClick={closeMobileMenu}
-                className={isActive('/admin/login') ? 'active with-icon' : 'with-icon'}
+                className={
+                  isActive("/admin/login") ? "active with-icon" : "with-icon"
+                }
                 aria-label="Admin Login"
               >
                 🛡️
@@ -156,7 +201,9 @@ const Navbar = () => {
               <Link
                 to="/admin"
                 onClick={closeMobileMenu}
-                className={isActive('/admin') ? 'active with-icon' : 'with-icon'}
+                className={
+                  isActive("/admin") ? "active with-icon" : "with-icon"
+                }
                 aria-label="Admin Dashboard"
               >
                 🛡️
@@ -164,7 +211,9 @@ const Navbar = () => {
             )}
 
             {(user || admin) && (
-              <button className="btn-logout" onClick={handleLogout}>Logout</button>
+              <button className="btn-logout" onClick={handleLogout}>
+                Logout
+              </button>
             )}
 
             <button
@@ -180,7 +229,9 @@ const Navbar = () => {
 
       {showEnquiry && (
         <ModalPortal onClose={closeEnquiry}>
-          <div className={`enquiry-inner ${exiting ? 'slide-out' : 'slide-in'}`}>
+          <div
+            className={`enquiry-inner ${exiting ? "slide-out" : "slide-in"}`}
+          >
             <EnquiryForm onSuccess={handleEnquirySuccess} />
           </div>
         </ModalPortal>
