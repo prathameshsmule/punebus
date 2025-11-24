@@ -35,7 +35,7 @@ import EnquiryForm from "./EnquiryForm";
    Config
 ----------------------------*/
 // TODO: put your real support number here
-const PHONE_NUMBER = "+919876543210";
+const PHONE_NUMBER = "+919923400414";
 
 /* ---------------------------
    Minimal UI primitives
