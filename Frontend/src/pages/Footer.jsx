@@ -253,19 +253,7 @@ export default function Footer() {
                   gap: "0.75rem",
                 }}
               >
-                <a
-                  href="tel:+919923400414"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    color: "#cbd5e1",
-                    textDecoration: "none",
-                  }}
-                >
-                  <Phone style={{ width: 18, height: 18 }} aria-hidden="true" />
-                  +91 9923400414
-                </a>
+               
 
                 <a
                   href="mailto:punebus2@gmail.com"
