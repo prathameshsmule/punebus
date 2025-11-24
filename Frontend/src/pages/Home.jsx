@@ -34,8 +34,14 @@ import EnquiryForm from "./EnquiryForm";
 /* ---------------------------
    Config
 ----------------------------*/
-// TODO: put your real support number here
+// Phone number (for display / future use)
 const PHONE_NUMBER = "+919923400414";
+
+// WhatsApp number (without + sign)
+const WHATSAPP_NUMBER = "919923400414";
+
+const createWhatsAppLink = (message) =>
+  `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
 
 /* ---------------------------
    Minimal UI primitives
@@ -398,7 +404,7 @@ const VideoShowcase = () => {
       description: "(PREMIUM PLAN)",
     },
     {
-      type: "upcoming", // 👈 yeh ab video nahi hai, upcoming card hai
+      type: "upcoming",
       src: null,
       title: "PLATINUM PACKAGE",
       description: "(COMING SOON)",
@@ -476,7 +482,6 @@ const VideoShowcase = () => {
                       Your browser does not support the video tag.
                     </video>
                   ) : (
-                    // 👇 Platinum ke liye "UPCOMING" logo-style placeholder
                     <div
                       style={{
                         position: "absolute",
@@ -615,7 +620,7 @@ const Services = ({ onOpenEnquiry, phone }) => {
       image: parcelImg,
     },
     {
-      icon: Shield, // reuse
+      icon: Shield,
       title: "Hotel Vendor Registration",
       subtitle: "Verified hotel partners onboard",
       features: [
@@ -793,7 +798,7 @@ const Services = ({ onOpenEnquiry, phone }) => {
                     ))}
                   </ul>
 
-                  {/* Action row: primary + small call button */}
+                  {/* Action row: primary + WhatsApp button */}
                   <div
                     style={{
                       display: "flex",
@@ -817,12 +822,14 @@ const Services = ({ onOpenEnquiry, phone }) => {
                     <Button
                       variant="outline"
                       size="sm"
-                      href={`tel:${phone}`}
-                      aria-label={`Call about ${service.title}`}
-                      title="Call Now"
+                      href={createWhatsAppLink(
+                        `Namaste, mujhe "${service.title}" ke baare mein jankari chahiye.`
+                      )}
+                      aria-label={`WhatsApp about ${service.title}`}
+                      title="Chat on WhatsApp"
                     >
                       <Phone style={{ width: 16, height: 16 }} />
-                      Call
+                      WhatsApp
                     </Button>
                   </div>
                 </CardContent>
@@ -1007,7 +1014,6 @@ const InCityServices = ({ onOpenEnquiry }) => {
           {items.map((it, idx) => (
             <Card key={idx}>
               <CardContent style={{ paddingBottom: "1.25rem" }}>
-                {/* 1024 × 1024 square box (responsive down) */}
                 <div
                   style={{
                     width: "100%",
@@ -1130,9 +1136,11 @@ const CTA = ({ onOpenEnquiry }) => {
               <Button
                 size="lg"
                 variant="outline"
-                href={`tel:${PHONE_NUMBER}`}
-                aria-label="Call now"
-                title="Call Now"
+                href={createWhatsAppLink(
+                  "Namaste, mujhe Pune Bus ki services ke baare mein baat karni hai."
+                )}
+                aria-label="Chat on WhatsApp"
+                title="Chat on WhatsApp"
                 style={{
                   borderColor: "white",
                   color: "white",
@@ -1140,7 +1148,7 @@ const CTA = ({ onOpenEnquiry }) => {
                 }}
               >
                 <Phone style={{ width: 20, height: 20 }} />
-                Call Now
+                WhatsApp
               </Button>
             </div>
           </div>
