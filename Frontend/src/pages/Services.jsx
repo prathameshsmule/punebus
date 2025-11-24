@@ -7,6 +7,9 @@ import replacementBusImg from "../assets/replce_bus.jpg";
 import Footer from "./Footer";
 import roadImg from "../assets/RoadAssistance.jpg";
 
+// ✅ enquiry form ko as component use kar rahe hain
+import EnquiryForm from "../pages/EnquiryForm";
+
 /* ---------------------- Added helper utilities ---------------------- */
 const getServiceImage = (serviceId) => {
   const images = {
@@ -19,6 +22,7 @@ const getServiceImage = (serviceId) => {
     g3: "https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55?w=400&h=300&fit=crop",
     g4: mechanicImg,
     g7: roadImg,
+    s6: mechanicImg,
     g5: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop",
     g6: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=300&fit=crop",
     p1: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=300&fit=crop",
@@ -50,6 +54,7 @@ const getDetailedDescription = (serviceId) => {
     p3: "Professional welcome assistants greet passengers at boarding points, provide assistance with luggage, guide them to their seats, and ensure a warm, hospitable start to their journey. This personalized touch elevates the passenger experience and reinforces your premium brand positioning.",
     p4: "In case of major breakdowns or accidents, we arrange rapid replacement buses to ensure passengers reach their destinations with minimal delay. Our emergency response team coordinates alternative transport, manages passenger communication, and handles all logistics to maintain service continuity.",
     p5: "Premium passengers receive priority boarding, dedicated assistance, and expedited service at all touchpoints. Our team ensures VIP customers enjoy a seamless, comfortable experience with personalized attention throughout their journey, reinforcing loyalty and satisfaction.",
+    s6: "Round-the-clock mechanical support for your buses. Our team helps diagnose issues over phone, guide your staff with quick fixes, and coordinate with local mechanics when needed. This ensures minimum downtime and keeps your buses back on road faster, even during late-night or off-peak hours.",
   };
   return descriptions[serviceId] || "Complete service description coming soon.";
 };
@@ -71,6 +76,7 @@ const getServiceTitle = (serviceId) => {
     p2: "Special Pickup Executive",
     p3: "Namastey Service (Welcome Assistants)",
     p4: "Emergency Bus Replacement",
+    s6: "24/7 Mechanical Support",
     p5: "Priority Passenger Handling",
   };
   return titles[serviceId] || "Highlighted Service";
@@ -78,13 +84,36 @@ const getServiceTitle = (serviceId) => {
 
 /* ---------------------- PREMIUM Local advertisers (used in Sponsors) ---------------------- */
 const localAdvertisers = [
-  { name: "Haldiram's", url: "https://www.haldirams.com", logo: "https://logo.clearbit.com/haldirams.com" },
-  { name: "Lay's", url: "https://www.lays.com", logo: "https://logo.clearbit.com/lays.com" },
-  { name: "Parle", url: "https://www.parleproducts.com", logo: "https://logo.clearbit.com/parleproducts.com" },
-  { name: "Amul", url: "https://amul.com", logo: "https://logo.clearbit.com/amul.com" },
-  { name: "Paper Boat", url: "https://paperboatdrinks.com", logo: "https://logo.clearbit.com/paperboatdrinks.com" },
-  { name: "Fevicol", url: "https://www.fevicol.in", logo: "https://logo.clearbit.com/fevicol.in" },
-  { name: "Patanjali", url: "https://www.patanjaliayurved.net", logo: "https://logo.clearbit.com/patanjaliayurved.net" },
+  {
+    name: "Haldiram's",
+    url: "https://www.haldirams.com",
+    logo: "https://logo.clearbit.com/haldirams.com",
+  },
+  {
+    name: "Lay's",
+    url: "https://www.lays.com",
+    logo: "https://logo.clearbit.com/lays.com",
+  },
+  {
+    name: "Parle",
+    url: "https://www.parleproducts.com",
+    logo: "https://logo.clearbit.com/parleproducts.com",
+  },
+  {
+    name: "Amul",
+    url: "https://amul.com",
+    logo: "https://logo.clearbit.com/amul.com",
+  },
+  {
+    name: "Fevicol",
+    url: "https://www.fevicol.in",
+    logo: "https://logo.clearbit.com/fevicol.in",
+  },
+  {
+    name: "Patanjali",
+    url: "https://www.patanjaliayurved.net",
+    logo: "https://logo.clearbit.com/patanjaliayurved.net",
+  },
 ];
 
 const ServicesPanel = () => {
@@ -94,8 +123,15 @@ const ServicesPanel = () => {
   const [selectedService, setSelectedService] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // enquiry modal
+  const [showEnquiry, setShowEnquiry] = useState(false);
+
   // track hover for sponsors track
   const [trackHover, setTrackHover] = useState(false);
+
+  // hover states
+  const [hoveredItem, setHoveredItem] = useState(null);
+  const [hoveredButton, setHoveredButton] = useState(null);
 
   // fallback/default services
   const fallbackServices = [
@@ -121,6 +157,7 @@ const ServicesPanel = () => {
         "Driver confirmation system to ensure schedules and assignments are acknowledged.",
       package: "silver",
     },
+    
     {
       id: "s4",
       title: "Passenger Feedback System",
@@ -199,6 +236,13 @@ const ServicesPanel = () => {
       id: "p5",
       title: "Priority Passenger Handling",
       description: "Priority boarding and assistance for premium passengers.",
+      package: "platinum",
+    },
+    {
+      id: "s6",
+      title: "24/7 Mechanical Support",
+      description:
+        "Round-the-clock mechanical helpline and on-road troubleshooting support for your buses.",
       package: "platinum",
     },
   ];
@@ -520,27 +564,9 @@ const ServicesPanel = () => {
       width: "140px",
       height: "60px",
       objectFit: "contain",
-      /* removed filter here; CSS below controls grayscale & hover */
     },
     name: { fontSize: "14px", color: "#6b7280", whiteSpace: "nowrap" },
-    cta: {
-      marginTop: "16px",
-      display: "flex",
-      justifyContent: "center",
-    },
-    btn: {
-      padding: "10px 14px",
-      borderRadius: "10px",
-      border: "1px solid #d1d5db",
-      background: "#ffffff",
-      color: "#111827",
-      fontWeight: 600,
-      cursor: "pointer",
-    },
   };
-
-  const [hoveredItem, setHoveredItem] = useState(null);
-  const [hoveredButton, setHoveredButton] = useState(null);
 
   if (loading) {
     return (
@@ -590,8 +616,6 @@ const ServicesPanel = () => {
           Choose from Silver, Gold, or Platinum packages designed to fit your
           bus service needs.
         </p>
-
-        {/* (Optional) quick search box wired to existing searchQuery state */}
 
         <div style={styles.cardsGrid}>
           {packages.map((pkg) => {
@@ -643,6 +667,7 @@ const ServicesPanel = () => {
                     </div>
                   )}
 
+                  {/* ✅ Contact Support → Enquiry modal open karega */}
                   <button
                     style={{
                       ...styles.ctaButton,
@@ -651,7 +676,7 @@ const ServicesPanel = () => {
                     }}
                     onMouseEnter={() => setHoveredButton(pkg.id)}
                     onMouseLeave={() => setHoveredButton(null)}
-                    onClick={() => (window.location.href = "tel:+1234567890")}
+                    onClick={() => setShowEnquiry(true)}
                   >
                     Contact Support
                   </button>
@@ -661,9 +686,8 @@ const ServicesPanel = () => {
           })}
         </div>
 
-        {/* ---------------- Maximum Seats Filled Highlight (NEW) ---------------- */}
+        {/* ---------------- Maximum Seats Filled Highlight ---------------- */}
         <section style={styles.highlightedWrap} aria-labelledby="seats-title">
-          {/* Left: Image */}
           <div>
             <img
               src={max_seat}
@@ -672,8 +696,6 @@ const ServicesPanel = () => {
               loading="lazy"
             />
           </div>
-
-          {/* Right: Content */}
           <div>
             <span style={styles.highlightedBadge}>Maximum Seats Filled</span>
             <h2 id="seats-title" style={styles.highlightedTitle}>
@@ -686,14 +708,8 @@ const ServicesPanel = () => {
             <p style={{ marginTop: 14, color: "#374151", lineHeight: 1.65 }}>
               {getDetailedDescription("s1")}
             </p>
-
             <div style={styles.highlightedActions}>
-              <button
-                style={styles.primaryBtn}
-                onClick={() => (window.location.href = "tel:+1234567890")}
-              >
-                Boost Occupancy
-              </button>
+              
               <button
                 style={styles.ghostBtn}
                 onClick={() =>
@@ -705,8 +721,8 @@ const ServicesPanel = () => {
             </div>
           </div>
         </section>
-        {/* -------------------------------------------------------------------- */}
 
+        {/* Service details modal */}
         {selectedService && (
           <div style={styles.modal} onClick={() => setSelectedService(null)}>
             <div
@@ -722,7 +738,6 @@ const ServicesPanel = () => {
                 ×
               </button>
 
-              {/* Added: service image + detailed description */}
               <img
                 src={getServiceImage(selectedService.id)}
                 alt={selectedService.title}
@@ -737,8 +752,7 @@ const ServicesPanel = () => {
           </div>
         )}
 
-        {/* -------------------- Highlighted Service (configurable) -------------------- */}
-        <section
+          <section
           style={styles.highlightedWrap}
           aria-labelledby="highlighted-title"
         >
@@ -769,12 +783,7 @@ const ServicesPanel = () => {
             </p>
 
             <div style={styles.highlightedActions}>
-              <button
-                style={styles.primaryBtn}
-                onClick={() => (window.location.href = "tel:+1234567890")}
-              >
-                Talk to an Expert
-              </button>
+              
               <button
                 style={styles.ghostBtn}
                 onClick={() =>
@@ -822,12 +831,7 @@ const ServicesPanel = () => {
             </p>
 
             <div style={styles.highlightedActions}>
-              <button
-                style={styles.primaryBtn}
-                onClick={() => (window.location.href = "tel:+1234567890")}
-              >
-                Hire a Mechanic
-              </button>
+              
               <button
                 style={styles.ghostBtn}
                 onClick={() =>
@@ -870,12 +874,7 @@ const ServicesPanel = () => {
             </p>
 
             <div style={styles.highlightedActions}>
-              <button
-                style={styles.primaryBtn}
-                onClick={() => (window.location.href = "tel:+1234567890")}
-              >
-                Hire a Driver
-              </button>
+              
               <button
                 style={styles.ghostBtn}
                 onClick={() =>
@@ -925,12 +924,7 @@ const ServicesPanel = () => {
             </p>
 
             <div style={styles.highlightedActions}>
-              <button
-                style={styles.primaryBtn}
-                onClick={() => (window.location.href = "tel:+1234567890")}
-              >
-                Book Welcome Assistants
-              </button>
+              
               <button
                 style={styles.ghostBtn}
                 onClick={() =>
@@ -945,16 +939,14 @@ const ServicesPanel = () => {
             </div>
           </div>
         </section>
-        {/* ---------------------------------------------------------------- */}
 
-        {/* -------------------- PREMIUM Local Advertisers (replaces Partners) -------------------- */}
+        {/* Sponsors slider */}
         <section
           aria-labelledby="partners-title"
           style={partnerStyles.wrap}
           onMouseEnter={() => setTrackHover(true)}
           onMouseLeave={() => setTrackHover(false)}
         >
-          {/* Keyframes (scoped) */}
           <style>{`
             @keyframes partners-scroll {
               0% { transform: translateX(0); }
@@ -969,8 +961,6 @@ const ServicesPanel = () => {
               background: #eef2ff;
               box-shadow: 0 6px 16px rgba(0,0,0,0.08);
             }
-
-            /* ✅ Default grayscale + colorful on hover */
             .partner-item img {
               filter: grayscale(100%);
               transition: filter .25s ease, transform .25s ease;
@@ -979,7 +969,6 @@ const ServicesPanel = () => {
               filter: none;
               transform: scale(1.05);
             }
-
             @media (max-width: 640px) {
               .partner-name { display: none; }
             }
@@ -996,12 +985,10 @@ const ServicesPanel = () => {
             </div>
           </div>
 
-          {/* Continuous loop viewport */}
           <div
             style={partnerStyles.viewport}
             aria-label="Premium Local Advertisers carousel"
           >
-            {/* Duplicate the list back-to-back for seamless loop */}
             <div
               className="partners-track"
               style={{ ...partnerStyles.track, width: "200%" }}
@@ -1033,18 +1020,37 @@ const ServicesPanel = () => {
               ))}
             </div>
           </div>
-
-        
         </section>
-        {/* -------------------------------------------------------------------- */}
-
-        {/* NOTE: The previous "Local Advertisers on Bus Image" section has been removed */}
       </div>
 
-      {/* --------------------------- Footer (MOVED OUTSIDE) --------------------------- */}
+      {/* ✅ Enquiry form modal (same page) */}
+      {showEnquiry && (
+        <div style={styles.modal} onClick={() => setShowEnquiry(false)}>
+          <div
+            style={{
+              ...styles.modalContent,
+              maxWidth: "900px",
+              width: "95%",
+              maxHeight: "90vh",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              style={styles.modalClose}
+              onClick={() => setShowEnquiry(false)}
+              aria-label="Close enquiry form"
+            >
+              ×
+            </button>
+
+            <EnquiryForm onSuccess={() => setShowEnquiry(false)} />
+          </div>
+        </div>
+      )}
+
       <Footer />
-      {/* -------------------------------------------------------------------- */}
     </>
   );
 };
+
 export default ServicesPanel;
