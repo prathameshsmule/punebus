@@ -1,3 +1,4 @@
+// middleware/errorHandler.js
 export const errorHandler = (err, req, res, next) => {
   console.error(err.stack);
   const status = err.statusCode || 500;
