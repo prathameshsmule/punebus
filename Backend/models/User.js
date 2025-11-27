@@ -3,25 +3,31 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
-    // New Business Fields
-    companyName: { type: String, required: true },
+    // Legacy fields (old system)
+    name: { type: String },          // old name
+    phone: { type: String },         // old phone / mobile
+    AddharNo: { type: String },      // old aadhar
     address: { type: String },
+    documents: { type: Object },
+
+    // New Business Fields (registration v2)
+    companyName: { type: String },   // optional here, controller will validate
     state: { type: String },
     city: { type: String },
     area: { type: String },
 
-    whatsappPhone: { type: String, required: true },
+    whatsappPhone: { type: String }, // optional here, controller will validate
     officeNumber: { type: String },
 
     gstNumber: { type: String },
     panNumber: { type: String },
-    aadharNumber: { type: String },
+    aadharNumber: { type: String },  // keep both AddharNo & aadharNumber
 
     aboutInfo: { type: String },
 
     bankAccountNumber: { type: String },
     ifscCode: { type: String },
-    cancelCheque: { type: String }, // store URL or base64
+    cancelCheque: { type: String }, // store URL or reference text
 
     // Auth Fields
     email: { type: String, unique: true, sparse: true },
@@ -32,13 +38,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: [
         "driver",
-        "Bus vendor",
+        "vendor",
         "mechanic",
         "cleaner",
         "admin",
         "restaurant",
         "parcel",
         "Dry Cleaner",
+        "Bus vendor", // keep if already used in DB
       ],
       required: true,
     },
