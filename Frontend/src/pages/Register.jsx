@@ -5,11 +5,13 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 const ROLE_OPTIONS = [
   "driver",
-  "vendor",
+  "Bus vendor",
   "mechanic",
   "cleaner",
+  "admin",
   "restaurant",
   "parcel",
+  "Dry Cleaner",
 ];
 
 // Accept both direct role values and service slugs
@@ -19,18 +21,22 @@ const normalizeRoleFromParam = (raw) => {
   const aliasMap = {
     // direct roles
     driver: "driver",
-    cleaner: "cleaner",
+    "bus vendor": "Bus vendor",
+    vendor: "Bus vendor",
     mechanic: "mechanic",
-    vendor: "vendor",
+    cleaner: "cleaner",
+    admin: "admin",
     restaurant: "restaurant",
     parcel: "parcel",
+    "dry cleaner": "Dry Cleaner",
+    "dry-cleaner": "Dry Cleaner",
 
-    // slugs from service titles
+    // slugs from service titles (old ones still supported)
     "professional-drivers": "driver",
     "bus-cleaners": "cleaner",
     "mechanic-support": "mechanic",
-    "replacement-bus": "vendor",
-    "emergency-services": "vendor",
+    "replacement-bus": "Bus vendor",
+    "emergency-services": "Bus vendor",
     "parcel-delivery": "parcel",
     "parcel-vendor": "parcel",
     "parcel-vendors": "parcel",
@@ -42,6 +48,25 @@ const normalizeRoleFromParam = (raw) => {
   return ROLE_OPTIONS.includes(resolved) ? resolved : "driver";
 };
 
+// Simple example data – you can expand this as needed
+const STATE_OPTIONS = [
+  "Maharashtra",
+  "Karnataka",
+  "Gujarat",
+  "Delhi",
+  "Tamil Nadu",
+  "Other",
+];
+
+const CITY_OPTIONS_BY_STATE = {
+  Maharashtra: ["Pune", "Mumbai", "Nagpur", "Nashik", "Other"],
+  Karnataka: ["Bengaluru", "Mysuru", "Mangaluru", "Hubballi", "Other"],
+  Gujarat: ["Ahmedabad", "Surat", "Vadodara", "Rajkot", "Other"],
+  Delhi: ["New Delhi", "Dwarka", "Saket", "Rohini", "Other"],
+  "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Salem", "Other"],
+  Other: ["Other"],
+};
+
 const Register = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -50,12 +75,21 @@ const Register = () => {
   const initialRole = normalizeRoleFromParam(incomingParam);
 
   const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    role: initialRole,
-    AddharNo: "",
+    companyName: "",
     address: "",
+    state: "",
+    city: "",
+    area: "",
+    whatsappPhone: "",
+    officeNumber: "",
+    gstNumber: "",
+    panNumber: "",
+    aadharNumber: "",
+    role: initialRole,
+    aboutInfo: "",
+    bankAccountNumber: "",
+    ifscCode: "",
+    cancelCheque: "",
   });
 
   useEffect(() => {
@@ -70,8 +104,21 @@ const Register = () => {
   const [msg, setMsg] = useState(null);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    // When state changes, also reset city
+    if (name === "state") {
+      setForm((prev) => ({
+        ...prev,
+        state: value,
+        city: "",
+      }));
+      return;
+    }
+
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -79,20 +126,30 @@ const Register = () => {
     setMsg(null);
 
     try {
+      // Adjust this path if your backend is prefixed with /api
       // const res = await api.post("/api/auth/register", form);
       const res = await api.post("/auth/register", form);
       const successText = res?.data?.message || "Registered successfully!";
       setMsg({ type: "success", text: successText });
       setShowSuccessPopup(true);
 
-      // reset, but keep role from URL
+      // Reset, but keep role from URL
       setForm({
-        name: "",
-        phone: "",
-        email: "",
-        role: initialRole,
-        AddharNo: "",
+        companyName: "",
         address: "",
+        state: "",
+        city: "",
+        area: "",
+        whatsappPhone: "",
+        officeNumber: "",
+        gstNumber: "",
+        panNumber: "",
+        aadharNumber: "",
+        role: initialRole,
+        aboutInfo: "",
+        bankAccountNumber: "",
+        ifscCode: "",
+        cancelCheque: "",
       });
 
       setTimeout(() => setShowSuccessPopup(false), 2500);
@@ -121,7 +178,7 @@ const Register = () => {
       borderRadius: "20px",
       boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
       padding: "40px",
-      maxWidth: "500px",
+      maxWidth: "600px",
       width: "100%",
       animation: "slideIn 0.5s ease-out",
     },
@@ -145,7 +202,7 @@ const Register = () => {
     form: {
       display: "flex",
       flexDirection: "column",
-      gap: "20px",
+      gap: "18px",
     },
     label: {
       display: "flex",
@@ -156,10 +213,10 @@ const Register = () => {
       color: "#333",
     },
     input: {
-      padding: "12px 16px",
+      padding: "10px 14px",
       border: "2px solid #e0e0e0",
       borderRadius: "10px",
-      fontSize: "15px",
+      fontSize: "14px",
       transition: "all 0.3s ease",
       outline: "none",
       backgroundColor: "#f9f9f9",
@@ -171,20 +228,20 @@ const Register = () => {
       boxShadow: "0 4px 12px rgba(102, 126, 234, 0.2)",
     },
     select: {
-      padding: "12px 16px",
+      padding: "10px 14px",
       border: "2px solid #e0e0e0",
       borderRadius: "10px",
-      fontSize: "15px",
+      fontSize: "14px",
       transition: "all 0.3s ease",
       outline: "none",
       backgroundColor: "#f9f9f9",
       cursor: "pointer",
     },
     textarea: {
-      padding: "12px 16px",
+      padding: "10px 14px",
       border: "2px solid #e0e0e0",
       borderRadius: "10px",
-      fontSize: "15px",
+      fontSize: "14px",
       transition: "all 0.3s ease",
       outline: "none",
       backgroundColor: "#f9f9f9",
@@ -279,10 +336,22 @@ const Register = () => {
       color: "#fff",
       fontWeight: 700,
     },
+    fieldRow: {
+      display: "flex",
+      gap: "12px",
+      flexWrap: "wrap",
+    },
+    fieldCol: {
+      flex: 1,
+      minWidth: "180px",
+    },
   };
 
   const [focusedField, setFocusedField] = useState(null);
   const [buttonHover, setButtonHover] = useState(false);
+
+  const availableCities =
+    CITY_OPTIONS_BY_STATE[form.state] || CITY_OPTIONS_BY_STATE["Other"];
 
   return (
     <div style={styles.pageContainer}>
@@ -305,65 +374,223 @@ const Register = () => {
 
       <div style={styles.formWrapper} className="form-wrapper">
         <h2 style={styles.heading} className="heading">
-          User Registration
+          Partner Registration
         </h2>
         <p style={styles.subtitle}>
-          Join PuneBus and start your journey with us
+          Register your company with PuneBus and start working with us.
         </p>
 
         <form onSubmit={submit} style={styles.form}>
+          {/* Company name */}
           <label style={styles.label}>
-            Name *
+            Company Name *
             <input
-              name="name"
-              value={form.name}
+              name="companyName"
+              value={form.companyName}
               onChange={handleChange}
-              onFocus={() => setFocusedField("name")}
+              onFocus={() => setFocusedField("companyName")}
               onBlur={() => setFocusedField(null)}
               style={{
                 ...styles.input,
-                ...(focusedField === "name" ? styles.inputFocus : {}),
+                ...(focusedField === "companyName" ? styles.inputFocus : {}),
               }}
-              placeholder="Enter your full name"
+              placeholder="Enter your company name"
               required
             />
           </label>
 
+          {/* Address & Area */}
           <label style={styles.label}>
-            Phone Number *
-            <input
-              name="phone"
-              type="tel"
-              value={form.phone}
+            Address *
+            <textarea
+              name="address"
+              value={form.address}
               onChange={handleChange}
-              onFocus={() => setFocusedField("phone")}
+              onFocus={() => setFocusedField("address")}
               onBlur={() => setFocusedField(null)}
               style={{
-                ...styles.input,
-                ...(focusedField === "phone" ? styles.inputFocus : {}),
+                ...styles.textarea,
+                ...(focusedField === "address" ? styles.inputFocus : {}),
               }}
-              placeholder="Enter your phone number"
+              placeholder="Flat / Building / Street / Landmark"
               required
             />
           </label>
 
+          <div style={styles.fieldRow}>
+            <div style={styles.fieldCol}>
+              <label style={styles.label}>
+                State *
+                <select
+                  name="state"
+                  value={form.state}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("state")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...styles.select,
+                    ...(focusedField === "state" ? styles.inputFocus : {}),
+                  }}
+                  required
+                >
+                  <option value="">Select state</option>
+                  {STATE_OPTIONS.map((st) => (
+                    <option key={st} value={st}>
+                      {st}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div style={styles.fieldCol}>
+              <label style={styles.label}>
+                City *
+                <select
+                  name="city"
+                  value={form.city}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("city")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...styles.select,
+                    ...(focusedField === "city" ? styles.inputFocus : {}),
+                  }}
+                  required
+                  disabled={!form.state}
+                >
+                  <option value="">
+                    {form.state ? "Select city" : "Select state first"}
+                  </option>
+                  {availableCities.map((ct) => (
+                    <option key={ct} value={ct}>
+                      {ct}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+
           <label style={styles.label}>
-            Email <span style={styles.icon}>(optional)</span>
+            Area / Locality *
             <input
-              name="email"
-              type="email"
-              value={form.email}
+              name="area"
+              value={form.area}
               onChange={handleChange}
-              onFocus={() => setFocusedField("email")}
+              onFocus={() => setFocusedField("area")}
               onBlur={() => setFocusedField(null)}
               style={{
                 ...styles.input,
-                ...(focusedField === "email" ? styles.inputFocus : {}),
+                ...(focusedField === "area" ? styles.inputFocus : {}),
               }}
-              placeholder="your.email@example.com"
+              placeholder="e.g., Kothrud, Hinjewadi"
+              required
             />
           </label>
 
+          {/* Contact numbers */}
+          <div style={styles.fieldRow}>
+            <div style={styles.fieldCol}>
+              <label style={styles.label}>
+                Phone Number (WhatsApp) *
+                <input
+                  name="whatsappPhone"
+                  type="tel"
+                  value={form.whatsappPhone}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("whatsappPhone")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...styles.input,
+                    ...(focusedField === "whatsappPhone"
+                      ? styles.inputFocus
+                      : {}),
+                  }}
+                  placeholder="WhatsApp number"
+                  required
+                />
+              </label>
+            </div>
+
+            <div style={styles.fieldCol}>
+              <label style={styles.label}>
+                Office Number
+                <input
+                  name="officeNumber"
+                  type="tel"
+                  value={form.officeNumber}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("officeNumber")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...styles.input,
+                    ...(focusedField === "officeNumber"
+                      ? styles.inputFocus
+                      : {}),
+                  }}
+                  placeholder="Landline / office contact"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* GST / PAN / Aadhar */}
+          <div style={styles.fieldRow}>
+            <div style={styles.fieldCol}>
+              <label style={styles.label}>
+                GSTN Number
+                <input
+                  name="gstNumber"
+                  value={form.gstNumber}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("gstNumber")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...styles.input,
+                    ...(focusedField === "gstNumber" ? styles.inputFocus : {}),
+                  }}
+                  placeholder="e.g., 27ABCDE1234F1Z5"
+                />
+              </label>
+            </div>
+
+            <div style={styles.fieldCol}>
+              <label style={styles.label}>
+                PAN Number
+                <input
+                  name="panNumber"
+                  value={form.panNumber}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("panNumber")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...styles.input,
+                    ...(focusedField === "panNumber" ? styles.inputFocus : {}),
+                  }}
+                  placeholder="e.g., ABCDE1234F"
+                />
+              </label>
+            </div>
+          </div>
+
+          <label style={styles.label}>
+            Aadhar Number
+            <input
+              name="aadharNumber"
+              value={form.aadharNumber}
+              onChange={handleChange}
+              onFocus={() => setFocusedField("aadharNumber")}
+              onBlur={() => setFocusedField(null)}
+              style={{
+                ...styles.input,
+                ...(focusedField === "aadharNumber" ? styles.inputFocus : {}),
+              }}
+              placeholder="e.g., 8568-1241-7456"
+            />
+          </label>
+
+          {/* Role */}
           <label style={styles.label}>
             Role *
             <select
@@ -378,45 +605,93 @@ const Register = () => {
               }}
               required
             >
+              <option value="">Select role</option>
               <option value="driver">🚍 Driver</option>
-              <option value="vendor">🚌 Bus Vendor</option>
+              <option value="Bus vendor">🚌 Bus Vendor</option>
               <option value="mechanic">🔧 Mechanic</option>
               <option value="cleaner">🧹 Cleaner</option>
               <option value="restaurant">🍽 Restaurant</option>
               <option value="parcel">📦 Parcel Vendor</option>
+              <option value="Dry Cleaner">👕 Dry Cleaner</option>
+              <option value="admin">👤 Admin</option>
             </select>
           </label>
 
+          {/* About */}
           <label style={styles.label}>
-            AddharNo <span style={styles.icon}>(Verification)</span>
-            <input
-              name="AddharNo"
-              value={form.AddharNo}
-              onChange={handleChange}
-              onFocus={() => setFocusedField("AddharNo")}
-              onBlur={() => setFocusedField(null)}
-              style={{
-                ...styles.input,
-                ...(focusedField === "AddharNo" ? styles.inputFocus : {}),
-              }}
-              placeholder="e.g., 8568-1241-7456"
-            />
-          </label>
-
-          <label style={styles.label}>
-            Address <span style={styles.icon}>(optional)</span>
+            About / Additional Info
             <textarea
-              name="address"
-              value={form.address}
+              name="aboutInfo"
+              value={form.aboutInfo}
               onChange={handleChange}
-              onFocus={() => setFocusedField("address")}
+              onFocus={() => setFocusedField("aboutInfo")}
               onBlur={() => setFocusedField(null)}
               style={{
                 ...styles.textarea,
-                ...(focusedField === "address" ? styles.inputFocus : {}),
+                ...(focusedField === "aboutInfo" ? styles.inputFocus : {}),
               }}
-              placeholder="Enter your complete address"
+              placeholder="Briefly describe your services, experience, fleet details, etc."
             />
+          </label>
+
+          {/* Bank details */}
+          <div style={styles.fieldRow}>
+            <div style={styles.fieldCol}>
+              <label style={styles.label}>
+                Bank Account Number
+                <input
+                  name="bankAccountNumber"
+                  value={form.bankAccountNumber}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("bankAccountNumber")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...styles.input,
+                    ...(focusedField === "bankAccountNumber"
+                      ? styles.inputFocus
+                      : {}),
+                  }}
+                  placeholder="Enter account number"
+                />
+              </label>
+            </div>
+
+            <div style={styles.fieldCol}>
+              <label style={styles.label}>
+                IFSC Code
+                <input
+                  name="ifscCode"
+                  value={form.ifscCode}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("ifscCode")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...styles.input,
+                    ...(focusedField === "ifscCode" ? styles.inputFocus : {}),
+                  }}
+                  placeholder="e.g., HDFC0001234"
+                />
+              </label>
+            </div>
+          </div>
+
+          <label style={styles.label}>
+            Cancelled Cheque (Reference / URL)
+            <input
+              name="cancelCheque"
+              value={form.cancelCheque}
+              onChange={handleChange}
+              onFocus={() => setFocusedField("cancelCheque")}
+              onBlur={() => setFocusedField(null)}
+              style={{
+                ...styles.input,
+                ...(focusedField === "cancelCheque" ? styles.inputFocus : {}),
+              }}
+              placeholder="Paste document URL or reference"
+            />
+            <span style={styles.icon}>
+              (You can later upgrade this to actual file upload with Multer)
+            </span>
           </label>
 
           <button
