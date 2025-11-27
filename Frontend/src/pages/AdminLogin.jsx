@@ -17,7 +17,7 @@ const AdminLogin = () => {
     setMsg(null);
     try {
       // const res = await api.post('/api/auth/admin/login', form);
-     const res = await api.post('/api/auth/admin/login', form);
+     const res = await api.post('/auth/admin/login', form);
 
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('admin', JSON.stringify(res.data.user || {}));
