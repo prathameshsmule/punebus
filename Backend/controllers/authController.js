@@ -11,8 +11,9 @@ const signToken = (userId) => {
 };
 
 // =====================================================
-// PUBLIC REGISTRATION (driver, vendor, mechanic, etc.)
+// PUBLIC REGISTRATION (NEW FORMAT)
 // =====================================================
+
 export const registerUser = async (req, res) => {
   try {
     const {
@@ -35,7 +36,7 @@ export const registerUser = async (req, res) => {
       password,
     } = req.body;
 
-    // Validate important required fields
+    // Validate required fields
     if (!companyName || !whatsappPhone || !role) {
       return res.status(400).json({
         message: "Company name, WhatsApp phone and role are required",
@@ -49,7 +50,7 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // Hash password if provided (optional)
+    // Hash password if provided
     let hashedPassword = undefined;
     if (password) {
       hashedPassword = await bcrypt.hash(password, 10);
@@ -83,11 +84,8 @@ export const registerUser = async (req, res) => {
   } catch (err) {
     console.error(err);
 
-    // Duplicate email
     if (err.code === 11000) {
-      return res.status(400).json({
-        message: "Email already exists",
-      });
+      return res.status(400).json({ message: "Email already exists" });
     }
 
     return res.status(500).json({
@@ -98,30 +96,39 @@ export const registerUser = async (req, res) => {
 };
 
 // =====================================================
-// ADMIN LOGIN
+// ADMIN LOGIN (OLD SYSTEM — SAME AS BEFORE)
 // =====================================================
+
 export const adminLogin = async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password)
+  if (!email || !password) {
     return res.status(400).json({ message: "Email and password required" });
+  }
 
-  // Verify admin
+  // OLD admin format: name, email, password, role: "admin"
   const admin = await User.findOne({ email, role: "admin" });
-  if (!admin) return res.status(401).json({ message: "Invalid credentials" });
+
+  if (!admin) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
 
   const isMatch = await bcrypt.compare(password, admin.password);
-  if (!isMatch)
+  if (!isMatch) {
     return res.status(401).json({ message: "Invalid credentials" });
+  }
 
-  const token = signToken(admin._id);
+  const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
 
   res.json({
     token,
     user: {
       id: admin._id,
-      companyName: admin.companyName,
+      name: admin.name, // OLD NAME SUPPORT
       email: admin.email,
+      role: admin.role,
     },
   });
 };
