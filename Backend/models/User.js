@@ -1,48 +1,54 @@
 // models/User.js
 import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema({
-  companyName: { type: String, required: true },
-  address: { type: String, required: true },
-  state: { type: String, required: true },
-  city: { type: String, required: true },
-  area: { type: String, required: true },
+const userSchema = new mongoose.Schema(
+  {
+    // New Business Fields
+    companyName: { type: String, required: true },
+    address: { type: String },
+    state: { type: String },
+    city: { type: String },
+    area: { type: String },
 
-  whatsappPhone: { type: String, required: true }, // primary contact (WhatsApp)
-  officeNumber: { type: String },                  // optional landline / office number
+    whatsappPhone: { type: String, required: true },
+    officeNumber: { type: String },
 
-  gstNumber: { type: String },     // GSTN
-  panNumber: { type: String },     // PAN
-  aadharNumber: { type: String },  // Aadhar
+    gstNumber: { type: String },
+    panNumber: { type: String },
+    aadharNumber: { type: String },
 
-  role: {
-    type: String,
-    enum: [
-      "driver",
-      "Bus vendor",
-      "mechanic",
-      "cleaner",
-      "admin",
-      "restaurant",
-      "parcel",
-      "Dry Cleaner",
-    ],
-    required: true,
+    aboutInfo: { type: String },
+
+    bankAccountNumber: { type: String },
+    ifscCode: { type: String },
+    cancelCheque: { type: String }, // store URL or base64
+
+    // Auth Fields
+    email: { type: String, unique: true, sparse: true },
+    password: { type: String },
+
+    // Roles
+    role: {
+      type: String,
+      enum: [
+        "driver",
+        "Bus vendor",
+        "mechanic",
+        "cleaner",
+        "admin",
+        "restaurant",
+        "parcel",
+        "Dry Cleaner",
+      ],
+      required: true,
+    },
+
+    createdAt: { type: Date, default: Date.now },
+    isActive: { type: Boolean, default: true },
   },
-
-  aboutInfo: { type: String }, // free text about company / services
-
-  bankAccountNumber: { type: String },
-  ifscCode: { type: String },
-  cancelCheque: { type: String }, // can store URL/path or reference string
-
-  // Keep email/password for admin login or future auth
-  email: { type: String, required: false, unique: true, sparse: true },
-  password: { type: String, required: false },
-
-  createdAt: { type: Date, default: Date.now },
-  isActive: { type: Boolean, default: true },
-});
+  { timestamps: true }
+);
 
 const User = mongoose.model("User", userSchema);
+
 export default User;
