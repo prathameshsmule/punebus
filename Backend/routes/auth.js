@@ -1,3 +1,4 @@
+// routes/auth.js
 import express from "express";
 import { registerUser, adminLogin } from "../controllers/authController.js";
 
@@ -5,8 +6,25 @@ const router = express.Router();
 
 /**
  * POST /api/auth/register
- * Body: { name, phone, email?, role, vehicleNumber?, address?, documents? }
- * public registration (not admin)
+ * Body:
+ * {
+ *   companyName,
+ *   address,
+ *   state,
+ *   city,
+ *   area,
+ *   whatsappPhone,
+ *   officeNumber?,
+ *   gstNumber?,
+ *   panNumber?,
+ *   aadharNumber?,
+ *   role,            // "driver" | "Bus vendor" | "mechanic" | "cleaner" | "admin" | "restaurant" | "parcel" | "Dry Cleaner"
+ *   aboutInfo?,
+ *   bankAccountNumber?,
+ *   ifscCode?,
+ *   cancelCheque?
+ * }
+ * Public registration (not admin)
  */
 router.post("/register", registerUser);
 
