@@ -46,7 +46,13 @@ const AdminDashboard = () => {
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
-  const [showAddForm, setShowAddForm] = useState(false);
+
+  // MODALS
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showAddSubscriptionModal, setShowAddSubscriptionModal] =
+    useState(false);
 
   // NEW USER STRUCTURE
   const [newUser, setNewUser] = useState({
@@ -70,9 +76,7 @@ const AdminDashboard = () => {
   });
 
   const [editingUser, setEditingUser] = useState(null);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [deletingUser, setDeletingUser] = useState(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Enquiries
   const [showEnquiries, setShowEnquiries] = useState(false);
@@ -114,14 +118,20 @@ const AdminDashboard = () => {
   const deleteCancelRef = useRef(null);
   const deleteConfirmRef = useRef(null);
 
+  // body scroll lock when any modal open
   useEffect(() => {
-    const open = showEditModal || showDeleteModal;
+    const open =
+      showEditModal ||
+      showDeleteModal ||
+      showAddUserModal ||
+      showAddSubscriptionModal;
     document.body.style.overflow = open ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [showEditModal, showDeleteModal]);
+  }, [showEditModal, showDeleteModal, showAddUserModal, showAddSubscriptionModal]);
 
+  // ESC to close modals
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") {
@@ -133,11 +143,17 @@ const AdminDashboard = () => {
           setShowDeleteModal(false);
           setDeletingUser(null);
         }
+        if (showAddUserModal) {
+          setShowAddUserModal(false);
+        }
+        if (showAddSubscriptionModal) {
+          setShowAddSubscriptionModal(false);
+        }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showEditModal, showDeleteModal]);
+  }, [showEditModal, showDeleteModal, showAddUserModal, showAddSubscriptionModal]);
 
   // ----------------------------
   // Backend interactions
@@ -315,6 +331,7 @@ const AdminDashboard = () => {
         endDate: "",
         notes: "",
       });
+      setShowAddSubscriptionModal(false);
       fetchSubscriptions(1, "");
       setSubPage(1);
       fetchStats();
@@ -429,9 +446,9 @@ const AdminDashboard = () => {
         email: "",
         password: "",
       });
-      setShowAddForm(false);
+      setShowAddUserModal(false);
       setPage(1);
-      fetchUsers(activeTab, 1, "");
+      fetchUsers(activeTab || "driver", 1, "");
       fetchStats();
     } catch (err) {
       alert(err?.response?.data?.message || "Failed to create user");
@@ -494,15 +511,17 @@ const AdminDashboard = () => {
     setPage(1);
     setSearch("");
     setShowEnquiries(false);
-    setShowAddForm(false);
     setShowSubscriptionsPanel(false);
+    setShowAddUserModal(false);
+    setShowAddSubscriptionModal(false);
   };
 
   const toggleEnquiries = () => {
     const next = !showEnquiries;
     setShowEnquiries(next);
-    setShowAddForm(false);
     setShowSubscriptionsPanel(false);
+    setShowAddUserModal(false);
+    setShowAddSubscriptionModal(false);
     if (next) {
       setActiveTab(null);
       fetchEnquiries();
@@ -514,8 +533,9 @@ const AdminDashboard = () => {
   const toggleSubscriptions = () => {
     const next = !showSubscriptionsPanel;
     setShowSubscriptionsPanel(next);
-    setShowAddForm(false);
     setShowEnquiries(false);
+    setShowAddUserModal(false);
+    setShowAddSubscriptionModal(false);
     if (next) {
       setActiveTab(null);
       setSubPage(1);
@@ -949,29 +969,13 @@ const AdminDashboard = () => {
           >
             <button
               onClick={() => navigator.clipboard?.writeText(eq._id)}
-              style={{
-                padding: "8px 10px",
-                borderRadius: 8,
-                border: "none",
-                cursor: "pointer",
-                background: "#dbeafe",
-                color: "#1e40af",
-                fontWeight: 700,
-              }}
+              style={editBtnStyle}
             >
               Copy ID
             </button>
             <button
               onClick={() => handleDeleteEnquiry(eq._id)}
-              style={{
-                padding: "8px 10px",
-                borderRadius: 8,
-                border: "none",
-                cursor: "pointer",
-                background: "#fee2e2",
-                color: "#991b1b",
-                fontWeight: 700,
-              }}
+              style={deleteBtnStyle}
             >
               Delete
             </button>
@@ -1447,16 +1451,10 @@ const AdminDashboard = () => {
               </form>
 
               <button
-                onClick={() => {
-                  const next = !showAddForm;
-                  setShowAddForm(next);
-                  setShowEnquiries(false);
-                  setShowSubscriptionsPanel(false);
-                  if (next) setActiveTab(null);
-                }}
+                onClick={() => setShowAddUserModal(true)}
                 style={addBtnStyle}
               >
-                {showAddForm ? "✕ Close" : "+ Add User"}
+                + Add User
               </button>
 
               <button onClick={toggleEnquiries} style={enquiryBtnStyle}>
@@ -1467,322 +1465,11 @@ const AdminDashboard = () => {
                 onClick={toggleSubscriptions}
                 style={subscriptionBtnStyle}
               >
-                {showSubscriptionsPanel
-                  ? "Hide Subscriptions"
-                  : "Subscriptions"}
+                {showSubscriptionsPanel ? "Hide Subscriptions" : "Subscriptions"}
               </button>
             </div>
           </div>
         </div>
-
-        {/* Add Form (UPDATED FIELDS) */}
-        {showAddForm && (
-          <div
-            style={{
-              background: "white",
-              borderRadius: 12,
-              padding: 16,
-              marginBottom: 16,
-              border: "1px solid #e5e7eb",
-            }}
-          >
-            <h3
-              style={{
-                fontSize: 18,
-                fontWeight: 700,
-                color: "#1f2937",
-                marginBottom: 12,
-              }}
-            >
-              Add New Partner
-            </h3>
-            <form onSubmit={handleCreateUser}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: isMobile
-                    ? "1fr"
-                    : "repeat(auto-fit, minmax(220px, 1fr))",
-                  gap: 12,
-                }}
-              >
-                <input
-                  type="text"
-                  value={newUser.companyName}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      companyName: e.target.value,
-                    })
-                  }
-                  placeholder="Company Name"
-                  required
-                  style={inputStyle}
-                />
-
-                {/* State / City / Area */}
-                <select
-                  value={newUser.state}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      state: e.target.value,
-                      city: "",
-                    })
-                  }
-                  required
-                  style={inputStyle}
-                >
-                  <option value="">Select State</option>
-                  {STATE_OPTIONS.map((st) => (
-                    <option key={st} value={st}>
-                      {st}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={newUser.city}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      city: e.target.value,
-                    })
-                  }
-                  required
-                  style={inputStyle}
-                  disabled={!newUser.state}
-                >
-                  <option value="">
-                    {newUser.state ? "Select City" : "Select State first"}
-                  </option>
-                  {availableUserCities.map((ct) => (
-                    <option key={ct} value={ct}>
-                      {ct}
-                    </option>
-                  ))}
-                </select>
-
-                <input
-                  type="text"
-                  value={newUser.area}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      area: e.target.value,
-                    })
-                  }
-                  placeholder="Area / Locality"
-                  required
-                  style={inputStyle}
-                />
-
-                {/* Address */}
-                <textarea
-                  value={newUser.address}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      address: e.target.value,
-                    })
-                  }
-                  placeholder="Full Address"
-                  required
-                  style={{
-                    ...textAreaStyle,
-                    gridColumn: "1 / -1",
-                  }}
-                />
-
-                {/* Phones */}
-                <input
-                  type="text"
-                  value={newUser.whatsappPhone}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      whatsappPhone: e.target.value,
-                    })
-                  }
-                  placeholder="WhatsApp Phone (primary)"
-                  required
-                  style={inputStyle}
-                />
-                <input
-                  type="text"
-                  value={newUser.officeNumber}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      officeNumber: e.target.value,
-                    })
-                  }
-                  placeholder="Office Number (optional)"
-                  style={inputStyle}
-                />
-
-                {/* GST / PAN / Aadhar */}
-                <input
-                  type="text"
-                  value={newUser.gstNumber}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      gstNumber: e.target.value,
-                    })
-                  }
-                  placeholder="GSTN Number"
-                  style={inputStyle}
-                />
-                <input
-                  type="text"
-                  value={newUser.panNumber}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      panNumber: e.target.value,
-                    })
-                  }
-                  placeholder="PAN Number"
-                  style={inputStyle}
-                />
-                <input
-                  type="text"
-                  value={newUser.aadharNumber}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      aadharNumber: e.target.value,
-                    })
-                  }
-                  placeholder="Aadhar Number"
-                  style={inputStyle}
-                />
-
-                {/* Role */}
-                <select
-                  value={newUser.role}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      role: e.target.value,
-                    })
-                  }
-                  style={inputStyle}
-                >
-                  <option value="driver">Driver</option>
-                  <option value="Bus vendor">Bus Vendor</option>
-                  <option value="mechanic">Mechanic</option>
-                  <option value="cleaner">Cleaner</option>
-                  <option value="restaurant">Restaurant</option>
-                  <option value="parcel">Parcel</option>
-                  <option value="Dry Cleaner">Dry Cleaner</option>
-                  <option value="admin">Admin</option>
-                </select>
-
-                {/* Bank & cheque */}
-                <input
-                  type="text"
-                  value={newUser.bankAccountNumber}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      bankAccountNumber: e.target.value,
-                    })
-                  }
-                  placeholder="Bank Account Number"
-                  style={inputStyle}
-                />
-                <input
-                  type="text"
-                  value={newUser.ifscCode}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      ifscCode: e.target.value,
-                    })
-                  }
-                  placeholder="IFSC Code"
-                  style={inputStyle}
-                />
-                <input
-                  type="text"
-                  value={newUser.cancelCheque}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      cancelCheque: e.target.value,
-                    })
-                  }
-                  placeholder="Cancelled Cheque (URL / Ref)"
-                  style={inputStyle}
-                />
-
-                {/* About */}
-                <textarea
-                  value={newUser.aboutInfo}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      aboutInfo: e.target.value,
-                    })
-                  }
-                  placeholder="About / Notes (services, fleet details, etc.)"
-                  style={{
-                    ...textAreaStyle,
-                    gridColumn: "1 / -1",
-                  }}
-                />
-
-                {/* Email / password */}
-                <input
-                  type="email"
-                  value={newUser.email}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      email: e.target.value,
-                    })
-                  }
-                  placeholder="Email (optional)"
-                  style={inputStyle}
-                />
-                <input
-                  type="password"
-                  value={newUser.password}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      password: e.target.value,
-                    })
-                  }
-                  placeholder="Password (optional)"
-                  style={inputStyle}
-                />
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: isMobile ? "column" : "row",
-                  gap: 10,
-                  marginTop: 12,
-                }}
-              >
-                <button type="submit" style={primaryButtonStyle}>
-                  Create User
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAddForm(false)}
-                  style={secondaryButtonStyle}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
 
         {/* Subscriptions Panel */}
         {showSubscriptionsPanel && (
@@ -1850,190 +1537,15 @@ const AdminDashboard = () => {
                   >
                     Download Excel
                   </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Subscription Form */}
-            <div
-              style={{
-                border: "1px solid #eef2ff",
-                borderRadius: 10,
-                padding: 12,
-                marginBottom: 12,
-              }}
-            >
-              <h4
-                style={{
-                  margin: 0,
-                  fontSize: 14,
-                  fontWeight: 800,
-                  color: "#111827",
-                }}
-              >
-                Add Subscription
-              </h4>
-              <form
-                onSubmit={handleCreateSubscription}
-                style={{ marginTop: 8 }}
-              >
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: isMobile
-                      ? "1fr"
-                      : "repeat(auto-fit, minmax(220px, 1fr))",
-                    gap: 10,
-                  }}
-                >
-                  <input
-                    value={subscriptionForm.name}
-                    onChange={(e) =>
-                      setSubscriptionForm({
-                        ...subscriptionForm,
-                        name: e.target.value,
-                      })
-                    }
-                    placeholder="Client Name"
-                    required
-                    style={inputStyle}
-                  />
-                  <input
-                    value={subscriptionForm.phone}
-                    onChange={(e) =>
-                      setSubscriptionForm({
-                        ...subscriptionForm,
-                        phone: e.target.value,
-                      })
-                    }
-                    placeholder="Phone"
-                    required
-                    style={inputStyle}
-                  />
-                  <input
-                    value={subscriptionForm.email}
-                    onChange={(e) =>
-                      setSubscriptionForm({
-                        ...subscriptionForm,
-                        email: e.target.value,
-                      })
-                    }
-                    placeholder="Email (optional)"
-                    style={inputStyle}
-                  />
-
-                  <select
-                    value={subscriptionForm.plan}
-                    onChange={(e) =>
-                      setSubscriptionForm({
-                        ...subscriptionForm,
-                        plan: e.target.value,
-                      })
-                    }
-                    style={inputStyle}
-                  >
-                    {subscriptionPlans.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={subscriptionForm.durationMonths}
-                    onChange={(e) =>
-                      setSubscriptionForm({
-                        ...subscriptionForm,
-                        durationMonths: parseInt(e.target.value, 10),
-                      })
-                    }
-                    style={inputStyle}
-                  >
-                    {durationOptions.map((d) => (
-                      <option key={d} value={d}>
-                        {d} months
-                      </option>
-                    ))}
-                  </select>
-
-                  <input
-                    type="date"
-                    value={subscriptionForm.startDate}
-                    onChange={(e) =>
-                      setSubscriptionForm({
-                        ...subscriptionForm,
-                        startDate: e.target.value,
-                      })
-                    }
-                    placeholder="Start Date"
-                    required
-                    style={inputStyle}
-                  />
-
-                  {/* endDate shown but disabled (auto) */}
-                  <input
-                    type="date"
-                    value={subscriptionForm.endDate || ""}
-                    onChange={(e) =>
-                      setSubscriptionForm({
-                        ...subscriptionForm,
-                        endDate: e.target.value,
-                      })
-                    }
-                    placeholder="End Date (auto)"
-                    style={{
-                      ...inputStyle,
-                      background: "#f8fafc",
-                    }}
-                    disabled
-                  />
-
-                  <input
-                    value={subscriptionForm.notes}
-                    onChange={(e) =>
-                      setSubscriptionForm({
-                        ...subscriptionForm,
-                        notes: e.target.value,
-                      })
-                    }
-                    placeholder="Notes (optional)"
-                    style={{
-                      ...inputStyle,
-                      gridColumn: "1 / -1",
-                    }}
-                  />
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    marginTop: 10,
-                  }}
-                >
-                  <button type="submit" style={primaryButtonStyle}>
-                    Create Subscription
-                  </button>
                   <button
                     type="button"
-                    onClick={() =>
-                      setSubscriptionForm({
-                        name: "",
-                        phone: "",
-                        email: "",
-                        plan: "Gold",
-                        durationMonths: 3,
-                        startDate: "",
-                        endDate: "",
-                        notes: "",
-                      })
-                    }
-                    style={secondaryButtonStyle}
+                    onClick={() => setShowAddSubscriptionModal(true)}
+                    style={primaryButtonStyle}
                   >
-                    Reset
+                    + Add Subscription
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
 
             {/* Subscriptions List */}
@@ -2411,7 +1923,7 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Users table / pagination / modals */}
+        {/* Users table / pagination */}
         {activeTab && (
           <div
             style={{
@@ -2654,7 +2166,9 @@ const AdminDashboard = () => {
                 Next
               </button>
               <button
-                onClick={() => goPage(Math.max(1, Math.ceil(total / limit)))}
+                onClick={() =>
+                  goPage(Math.max(1, Math.ceil(total / limit)))
+                }
                 disabled={page >= Math.ceil(total / limit)}
                 style={paginationButtonStyle(page >= Math.ceil(total / limit))}
               >
@@ -2664,7 +2178,529 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Edit Modal (UPDATED FIELDS) */}
+        {/* Add User Modal */}
+        {showAddUserModal && (
+          <div style={modalBackdrop} role="dialog" aria-modal="true">
+            <div style={modalContainer}>
+              <div
+                style={{
+                  padding: 16,
+                  borderBottom: "1px solid #e5e7eb",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <h3
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: "#1f2937",
+                  }}
+                >
+                  Add New Partner
+                </h3>
+                <button
+                  aria-label="Close add user modal"
+                  onClick={() => setShowAddUserModal(false)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    fontSize: 20,
+                    cursor: "pointer",
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateUser} style={{ padding: 16 }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile
+                      ? "1fr"
+                      : "repeat(auto-fit, minmax(220px, 1fr))",
+                    gap: 12,
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={newUser.companyName}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        companyName: e.target.value,
+                      })
+                    }
+                    placeholder="Company Name"
+                    required
+                    style={inputStyle}
+                  />
+
+                  {/* State / City / Area */}
+                  <select
+                    value={newUser.state}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        state: e.target.value,
+                        city: "",
+                      })
+                    }
+                    required
+                    style={inputStyle}
+                  >
+                    <option value="">Select State</option>
+                    {STATE_OPTIONS.map((st) => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={newUser.city}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        city: e.target.value,
+                      })
+                    }
+                    required
+                    style={inputStyle}
+                    disabled={!newUser.state}
+                  >
+                    <option value="">
+                      {newUser.state ? "Select City" : "Select State first"}
+                    </option>
+                    {availableUserCities.map((ct) => (
+                      <option key={ct} value={ct}>
+                        {ct}
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="text"
+                    value={newUser.area}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        area: e.target.value,
+                      })
+                    }
+                    placeholder="Area / Locality"
+                    required
+                    style={inputStyle}
+                  />
+
+                  {/* Address */}
+                  <textarea
+                    value={newUser.address}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        address: e.target.value,
+                      })
+                    }
+                    placeholder="Full Address"
+                    required
+                    style={{
+                      ...textAreaStyle,
+                      gridColumn: "1 / -1",
+                    }}
+                  />
+
+                  {/* Phones */}
+                  <input
+                    type="text"
+                    value={newUser.whatsappPhone}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        whatsappPhone: e.target.value,
+                      })
+                    }
+                    placeholder="WhatsApp Phone (primary)"
+                    required
+                    style={inputStyle}
+                  />
+                  <input
+                    type="text"
+                    value={newUser.officeNumber}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        officeNumber: e.target.value,
+                      })
+                    }
+                    placeholder="Office Number (optional)"
+                    style={inputStyle}
+                  />
+
+                  {/* GST / PAN / Aadhar */}
+                  <input
+                    type="text"
+                    value={newUser.gstNumber}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        gstNumber: e.target.value,
+                      })
+                    }
+                    placeholder="GSTN Number"
+                    style={inputStyle}
+                  />
+                  <input
+                    type="text"
+                    value={newUser.panNumber}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        panNumber: e.target.value,
+                      })
+                    }
+                    placeholder="PAN Number"
+                    style={inputStyle}
+                  />
+                  <input
+                    type="text"
+                    value={newUser.aadharNumber}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        aadharNumber: e.target.value,
+                      })
+                    }
+                    placeholder="Aadhar Number"
+                    style={inputStyle}
+                  />
+
+                  {/* Role */}
+                  <select
+                    value={newUser.role}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        role: e.target.value,
+                      })
+                    }
+                    style={inputStyle}
+                  >
+                    <option value="driver">Driver</option>
+                    <option value="Bus vendor">Bus Vendor</option>
+                    <option value="mechanic">Mechanic</option>
+                    <option value="cleaner">Cleaner</option>
+                    <option value="restaurant">Restaurant</option>
+                    <option value="parcel">Parcel</option>
+                    <option value="Dry Cleaner">Dry Cleaner</option>
+                    <option value="admin">Admin</option>
+                  </select>
+
+                  {/* Bank & cheque */}
+                  <input
+                    type="text"
+                    value={newUser.bankAccountNumber}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        bankAccountNumber: e.target.value,
+                      })
+                    }
+                    placeholder="Bank Account Number"
+                    style={inputStyle}
+                  />
+                  <input
+                    type="text"
+                    value={newUser.ifscCode}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        ifscCode: e.target.value,
+                      })
+                    }
+                    placeholder="IFSC Code"
+                    style={inputStyle}
+                  />
+                  <input
+                    type="text"
+                    value={newUser.cancelCheque}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        cancelCheque: e.target.value,
+                      })
+                    }
+                    placeholder="Cancelled Cheque (URL / Ref)"
+                    style={inputStyle}
+                  />
+
+                  {/* About */}
+                  <textarea
+                    value={newUser.aboutInfo}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        aboutInfo: e.target.value,
+                      })
+                    }
+                    placeholder="About / Notes (services, fleet details, etc.)"
+                    style={{
+                      ...textAreaStyle,
+                      gridColumn: "1 / -1",
+                    }}
+                  />
+
+                  {/* Email / password */}
+                  <input
+                    type="email"
+                    value={newUser.email}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        email: e.target.value,
+                      })
+                    }
+                    placeholder="Email (optional)"
+                    style={inputStyle}
+                  />
+                  <input
+                    type="password"
+                    value={newUser.password}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        password: e.target.value,
+                      })
+                    }
+                    placeholder="Password (optional)"
+                    style={inputStyle}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: isMobile ? "column" : "row",
+                    gap: 10,
+                    marginTop: 12,
+                  }}
+                >
+                  <button type="submit" style={primaryButtonStyle}>
+                    Create User
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddUserModal(false)}
+                    style={secondaryButtonStyle}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Add Subscription Modal */}
+        {showAddSubscriptionModal && (
+          <div style={modalBackdrop} role="dialog" aria-modal="true">
+            <div style={modalContainer}>
+              <div
+                style={{
+                  padding: 16,
+                  borderBottom: "1px solid #e5e7eb",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <h3
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: "#1f2937",
+                  }}
+                >
+                  Add Subscription
+                </h3>
+                <button
+                  aria-label="Close add subscription modal"
+                  onClick={() => setShowAddSubscriptionModal(false)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    fontSize: 20,
+                    cursor: "pointer",
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <form
+                onSubmit={handleCreateSubscription}
+                style={{ padding: 16 }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile
+                      ? "1fr"
+                      : "repeat(auto-fit, minmax(220px, 1fr))",
+                    gap: 10,
+                  }}
+                >
+                  <input
+                    value={subscriptionForm.name}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        name: e.target.value,
+                      })
+                    }
+                    placeholder="Client Name"
+                    required
+                    style={inputStyle}
+                  />
+                  <input
+                    value={subscriptionForm.phone}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        phone: e.target.value,
+                      })
+                    }
+                    placeholder="Phone"
+                    required
+                    style={inputStyle}
+                  />
+                  <input
+                    value={subscriptionForm.email}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        email: e.target.value,
+                      })
+                    }
+                    placeholder="Email (optional)"
+                    style={inputStyle}
+                  />
+
+                  <select
+                    value={subscriptionForm.plan}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        plan: e.target.value,
+                      })
+                    }
+                    style={inputStyle}
+                  >
+                    {subscriptionPlans.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={subscriptionForm.durationMonths}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        durationMonths: parseInt(e.target.value, 10),
+                      })
+                    }
+                    style={inputStyle}
+                  >
+                    {durationOptions.map((d) => (
+                      <option key={d} value={d}>
+                        {d} months
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="date"
+                    value={subscriptionForm.startDate}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        startDate: e.target.value,
+                      })
+                    }
+                    placeholder="Start Date"
+                    required
+                    style={inputStyle}
+                  />
+
+                  {/* endDate auto */}
+                  <input
+                    type="date"
+                    value={subscriptionForm.endDate || ""}
+                    readOnly
+                    placeholder="End Date (auto)"
+                    style={{
+                      ...inputStyle,
+                      background: "#f8fafc",
+                    }}
+                  />
+
+                  <input
+                    value={subscriptionForm.notes}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        notes: e.target.value,
+                      })
+                    }
+                    placeholder="Notes (optional)"
+                    style={{
+                      ...inputStyle,
+                      gridColumn: "1 / -1",
+                    }}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: isMobile ? "column" : "row",
+                    gap: 10,
+                    marginTop: 12,
+                  }}
+                >
+                  <button type="submit" style={primaryButtonStyle}>
+                    Create Subscription
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubscriptionForm({
+                        name: "",
+                        phone: "",
+                        email: "",
+                        plan: "Gold",
+                        durationMonths: 3,
+                        startDate: "",
+                        endDate: "",
+                        notes: "",
+                      });
+                      setShowAddSubscriptionModal(false);
+                    }}
+                    style={secondaryButtonStyle}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Modal */}
         {showEditModal && editingUser && (
           <div style={modalBackdrop} role="dialog" aria-modal="true">
             <div style={modalContainer}>
