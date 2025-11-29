@@ -10,6 +10,9 @@ const signToken = (userId) => {
   });
 };
 
+// STAFF roles list (sirf admin create karega)
+const STAFF_ROLES = ["manager", "accountant", "branchHead", "sales"];
+
 // =====================================================
 // PUBLIC REGISTRATION (NEW FORMAT)
 // =====================================================
@@ -43,10 +46,10 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // Prevent public admin signup
-    if (role === "admin") {
+    // ❌ Public route se admin ya staff roles register NHI honge
+    if (role === "admin" || STAFF_ROLES.includes(role)) {
       return res.status(403).json({
-        message: "Cannot register as admin via public route",
+        message: "Cannot register as admin or staff via public route. Please contact admin.",
       });
     }
 
