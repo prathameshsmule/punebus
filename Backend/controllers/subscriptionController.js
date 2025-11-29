@@ -1,25 +1,27 @@
 // controllers/subscriptionController.js
 import Subscription from "../models/Subscription.js";
 
-// same helper functions as before
+/** allowed durations per plan */
 const PLAN_DURATION_OPTIONS = {
   Gold: [3, 6, 12],
-  Silver: [1, 3, 6],
+  Silver: [1, 3, 6, 12],
   Platinum: [6, 12],
 };
 
+/** helper to compute endDate from startDate + months */
 const computeEndDate = (startDate, months) => {
   if (!startDate || !months) return undefined;
   const sd = new Date(startDate);
-  sd.setMonth(sd.getMonth() + parseInt(months));
+  sd.setMonth(sd.getMonth() + parseInt(months, 10));
   return sd;
 };
 
 const validatePlanAndDuration = (plan, durationMonths) => {
-  if (!plan || !PLAN_DURATION_OPTIONS[plan])
+  if (!plan || !PLAN_DURATION_OPTIONS[plan]) {
     return { ok: false, message: "Invalid plan" };
+  }
   const allowed = PLAN_DURATION_OPTIONS[plan];
-  if (!allowed.includes(parseInt(durationMonths))) {
+  if (!allowed.includes(parseInt(durationMonths, 10))) {
     return {
       ok: false,
       message: `Invalid duration for ${plan}. Allowed: ${allowed.join(", ")}`,
@@ -28,127 +30,171 @@ const validatePlanAndDuration = (plan, durationMonths) => {
   return { ok: true };
 };
 
-// ✅ CREATE (admin + sales)
-//  - sales: status ALWAYS "pending"
-//  - admin: default "active" (ya jo status body me bheje, agar valid ho)
+/**
+ * POST /api/admin/subscription
+ * - Admin create kare to status default "active" (ya jo body me diya ho)
+ * - Sales create kare to status hamesha "pending"
+ */
 export const createSubscriptionByAdmin = async (req, res) => {
-  try {
-    const {
-      name,
-      phone,
-      email,
-      plan = "Gold",
-      durationMonths,
-      startDate,
-      endDate: suppliedEnd,
-      status, // admin ke liye optional
-      notes,
-    } = req.body;
+  const {
+    name,
+    phone,
+    email,
+    plan = "Gold",
+    durationMonths,
+    startDate,
+    endDate: suppliedEnd,
+    status, // admin ke liye optional
+    notes,
+  } = req.body;
 
-    if (!name || !phone || !durationMonths || !startDate) {
-      return res
-        .status(400)
-        .json({ message: "name, phone, durationMonths and startDate required" });
-    }
-
-    const planCheck = validatePlanAndDuration(plan, durationMonths);
-    if (!planCheck.ok)
-      return res.status(400).json({ message: planCheck.message });
-
-    const role = req.user?.role;
-
-    let finalStatus;
-
-    if (role === "sales") {
-      // ✅ sales user hamesha pending hi create karega
-      finalStatus = "pending";
-    } else {
-      // admin / others ke liye, agar body me valid status hai to use karo
-      const allowed = ["pending", "active", "inactive", "expired"];
-      if (status && allowed.includes(status)) {
-        finalStatus = status;
-      } else {
-        // default admin ke liye active
-        finalStatus = "active";
-      }
-    }
-
-    const endDate = suppliedEnd
-      ? new Date(suppliedEnd)
-      : computeEndDate(startDate, durationMonths);
-
-    const subscription = new Subscription({
-      name,
-      phone,
-      email,
-      plan,
-      durationMonths: parseInt(durationMonths),
-      startDate: new Date(startDate),
-      endDate,
-      status: finalStatus,
-      notes,
-      createdBy: req.user?._id,
-    });
-
-    await subscription.save();
-
+  if (!name || !phone || !durationMonths || !startDate) {
     return res
-      .status(201)
-      .json({ message: "Subscription created", subscription });
-  } catch (err) {
-    console.error("[createSubscriptionByAdmin] error:", err);
-    return res.status(500).json({ message: "Server error" });
+      .status(400)
+      .json({ message: "name, phone, durationMonths and startDate required" });
   }
+
+  const planCheck = validatePlanAndDuration(plan, durationMonths);
+  if (!planCheck.ok) return res.status(400).json({ message: planCheck.message });
+
+  const endDate = suppliedEnd
+    ? new Date(suppliedEnd)
+    : computeEndDate(startDate, durationMonths);
+
+  const role = req.user?.role;
+
+  // admin -> active/inactive/expired/pending (jo bheje)
+  // sales -> always pending
+  let finalStatus = "active";
+  if (role === "sales") {
+    finalStatus = "pending";
+  } else if (
+    status &&
+    ["pending", "active", "inactive", "expired"].includes(status)
+  ) {
+    finalStatus = status;
+  }
+
+  const subscription = new Subscription({
+    name,
+    phone,
+    email,
+    plan,
+    durationMonths: parseInt(durationMonths, 10),
+    startDate: new Date(startDate),
+    endDate,
+    status: finalStatus,
+    notes,
+    createdBy: req.user?._id || null,
+  });
+
+  await subscription.save();
+  res.status(201).json({ message: "Subscription created", subscription });
 };
 
-// ✅ LIST
-//  - admin / manager / accountant / branch-head: sab subscriptions dekh sakte
-//  - sales: sirf apne banaye hue (createdBy = current user)
+/**
+ * GET /api/admin/subscriptions
+ * - Admin / Manager / Accountant / BranchHead / Sales sab dekh sakte
+ * - Sales user sirf apne createdBy wale records dekh sakta
+ * - Optional filters: ?search=&plan=&status=&createdBy=&page=&limit=
+ */
 export const listSubscriptions = async (req, res) => {
-  try {
-    const {
-      page = 1,
-      limit = 20,
-      search,
-      plan,
-      status,
-      sort = "createdAt",
-      order = "desc",
-    } = req.query;
+  const {
+    page = 1,
+    limit = 20,
+    search,
+    plan,
+    status,
+    sort = "createdAt",
+    order = "desc",
+    createdBy,
+  } = req.query;
 
-    const q = {};
+  const q = {};
 
-    if (search) {
-      q.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    if (plan) q.plan = plan;
-    if (status) q.status = status;
-
-    // ✅ sales ke liye apne hi records
-    if (req.user?.role === "sales") {
-      q.createdBy = req.user._id;
-    }
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const total = await Subscription.countDocuments(q);
-    const subs = await Subscription.find(q)
-      .sort({ [sort]: order === "asc" ? 1 : -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    return res.json({
-      total,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      subscriptions: subs,
-    });
-  } catch (err) {
-    console.error("[listSubscriptions] error:", err);
-    return res.status(500).json({ message: "Server error" });
+  if (search) {
+    q.$or = [
+      { name: { $regex: search, $options: "i" } },
+      { phone: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } },
+    ];
   }
+  if (plan) q.plan = plan;
+  if (status) q.status = status;
+
+  const role = req.user?.role;
+
+  // sales -> always filter by own id
+  if (role === "sales") {
+    q.createdBy = req.user._id;
+  } else if (createdBy) {
+    // admin/manager/accountant/branchHead can filter by createdBy
+    q.createdBy = createdBy;
+  }
+
+  const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+  const total = await Subscription.countDocuments(q);
+  const subs = await Subscription.find(q)
+    .sort({ [sort]: order === "asc" ? 1 : -1 })
+    .skip(skip)
+    .limit(parseInt(limit, 10));
+
+  res.json({
+    total,
+    page: parseInt(page, 10),
+    limit: parseInt(limit, 10),
+    subscriptions: subs,
+  });
+};
+
+export const getSubscriptionById = async (req, res) => {
+  const { id } = req.params;
+  if (!id)
+    return res.status(400).json({ message: "Subscription id required" });
+
+  const s = await Subscription.findById(id);
+  if (!s) return res.status(404).json({ message: "Subscription not found" });
+
+  res.json({ subscription: s });
+};
+
+export const updateSubscription = async (req, res) => {
+  const { id } = req.params;
+  const updates = { ...req.body };
+
+  const existing = await Subscription.findById(id);
+  if (!existing) {
+    return res.status(404).json({ message: "Subscription not found" });
+  }
+
+  const planToCheck = updates.plan || existing.plan;
+  const durationToCheck = updates.durationMonths || existing.durationMonths;
+
+  const planCheck = validatePlanAndDuration(planToCheck, durationToCheck);
+  if (!planCheck.ok) return res.status(400).json({ message: planCheck.message });
+
+  // recompute endDate when start/duration changed & no explicit endDate
+  if (updates.startDate || updates.durationMonths) {
+    const start = updates.startDate || existing.startDate;
+    const dur = updates.durationMonths || existing.durationMonths;
+    if (!updates.endDate) {
+      updates.endDate = computeEndDate(start, dur);
+    }
+  }
+
+  if (updates.durationMonths) {
+    updates.durationMonths = parseInt(updates.durationMonths, 10);
+  }
+
+  const s = await Subscription.findByIdAndUpdate(id, updates, { new: true });
+  res.json({ message: "Subscription updated", subscription: s });
+};
+
+export const deleteSubscription = async (req, res) => {
+  const { id } = req.params;
+  const s = await Subscription.findByIdAndDelete(id);
+  if (!s) {
+    return res.status(404).json({ message: "Subscription not found" });
+  }
+  res.json({ message: "Subscription deleted" });
 };
