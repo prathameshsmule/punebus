@@ -1,3 +1,4 @@
+// routes/admin.js
 import express from "express";
 import { protect, adminOnly } from "../middleware/auth.js";
 import {
@@ -8,6 +9,7 @@ import {
   getUserById,
   updateUser,
   deleteUser,
+  listStaffUsers,          // ✅ NEW IMPORT
 } from "../controllers/adminController.js";
 
 // NEW: import subscription controllers
@@ -23,11 +25,14 @@ const router = express.Router();
 
 router.use(protect, adminOnly);
 
-// create user
+// create user (drivers/vendors/staff sab yahin se)
 router.post("/user", createUserByAdmin);
 
 // list by role or all: /api/admin/list/:role  (role = driver/vendor/mechanic/cleaner/admin or 'all')
 router.get("/list/:role", listByCategory);
+
+// ✅ STAFF LIST: /api/admin/staff
+router.get("/staff", listStaffUsers);
 
 // mechanics quick list
 router.get("/mechanics", mechanicList);
