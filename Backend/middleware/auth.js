@@ -1,5 +1,8 @@
+// middleware/auth.js
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+
+const STAFF_ROLES = ["manager", "accountant", "branchHead", "sales"];
 
 export const protect = async (req, res, next) => {
   let token;
@@ -16,7 +19,6 @@ export const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // attach user
     req.user = await User.findById(decoded.id).select("-password");
     next();
   } catch (error) {
@@ -30,4 +32,18 @@ export const adminOnly = (req, res, next) => {
     return res.status(403).json({ message: "Admin access required" });
   }
   next();
+};
+
+// ✅ NEW: admin ya staff (manager/accountant/branchHead/sales) dono ko allow
+export const staffOrAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: "Not authorized" });
+  }
+
+  const role = req.user.role;
+  if (role === "admin" || STAFF_ROLES.includes(role)) {
+    return next();
+  }
+
+  return res.status(403).json({ message: "Staff/admin access required" });
 };
