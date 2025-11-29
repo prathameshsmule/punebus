@@ -2,6 +2,9 @@
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 
+// staff roles yahan define kiye
+const STAFF_ROLES = ["manager", "accountant", "branchHead", "sales"];
+
 /**
  * ADMIN: Create user
  * - Supports OLD fields: name, phone, AddharNo, address, documents
@@ -89,7 +92,7 @@ export const createUserByAdmin = async (req, res) => {
       cancelCheque,
 
       email: email || undefined,
-      role,
+      role,             // ✅ yahan ab staff roles bhi aa sakte hain (manager, accountant, etc.)
       password: hashed,
     });
 
@@ -145,9 +148,59 @@ export const mechanicList = async (req, res) => {
   return listByCategory(req, res);
 };
 
+/**
+ * ✅ NEW: Staff users list (manager/accountant/branchHead/sales)
+ * Endpoint: GET /api/admin/staff
+ * Query: ?page=&limit=&search=
+ */
+export const listStaffUsers = async (req, res) => {
+  const { page = 1, limit = 20, search } = req.query;
+
+  const query = {
+    role: { $in: STAFF_ROLES },
+  };
+
+  if (search) {
+    query.$or = [
+      { name: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } },
+      { phone: { $regex: search, $options: "i" } },
+      { companyName: { $regex: search, $options: "i" } },
+    ];
+  }
+
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const total = await User.countDocuments(query);
+  const users = await User.find(query)
+    .skip(skip)
+    .limit(parseInt(limit))
+    .sort({ createdAt: -1 });
+
+  return res.json({
+    page: parseInt(page),
+    limit: parseInt(limit),
+    total,
+    users,
+  });
+};
+
 /** get counts per role and totals */
 export const getStats = async (req, res) => {
-  const roles = ["driver", "vendor", "mechanic", "cleaner", "admin", "restaurant", "parcel"];
+  // ✅ yahan staff roles bhi count me add kiye
+  const roles = [
+    "driver",
+    "vendor",
+    "mechanic",
+    "cleaner",
+    "admin",
+    "restaurant",
+    "parcel",
+    "Bus vendor",
+    "manager",
+    "accountant",
+    "branchHead",
+    "sales",
+  ];
   const counts = {};
 
   const promises = roles.map(async (r) => {
