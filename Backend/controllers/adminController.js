@@ -43,7 +43,6 @@ export const createUserByAdmin = async (req, res) => {
       password,
     } = req.body;
 
-    // compat: allow either (name OR companyName) + (phone OR whatsappPhone)
     const finalName = name || companyName;
     const finalPhone = phone || whatsappPhone;
 
@@ -53,7 +52,30 @@ export const createUserByAdmin = async (req, res) => {
       });
     }
 
-    // prevent creating duplicate email if provided
+    // ✅ normalize role (branch-head -> branchHead)
+    let finalRole = role;
+    if (finalRole === "branch-head") finalRole = "branchHead";
+
+    // Mongo enum ka respect
+    const allowedRoles = [
+      "driver",
+      "vendor",
+      "mechanic",
+      "cleaner",
+      "admin",
+      "restaurant",
+      "parcel",
+      "Dry Cleaner",
+      "Bus vendor",
+      "manager",
+      "accountant",
+      "branchHead",
+      "sales",
+    ];
+    if (!allowedRoles.includes(finalRole)) {
+      return res.status(400).json({ message: `Invalid role: ${finalRole}` });
+    }
+
     if (email) {
       const existing = await User.findOne({ email });
       if (existing) {
@@ -61,7 +83,6 @@ export const createUserByAdmin = async (req, res) => {
       }
     }
 
-    // hash password if provided
     let hashed = undefined;
     if (password) {
       const salt = await bcrypt.genSalt(10);
@@ -92,18 +113,17 @@ export const createUserByAdmin = async (req, res) => {
       cancelCheque,
 
       email: email || undefined,
-      role,             // ✅ yahan ab staff roles bhi aa sakte hain (manager, accountant, etc.)
+      role: finalRole, // ✅ yahan normalized role
       password: hashed,
     });
 
-    return res
-      .status(201)
-      .json({ message: "User created by admin", user });
+    return res.status(201).json({ message: "User created by admin", user });
   } catch (err) {
     console.error("[createUserByAdmin] error:", err);
     return res.status(500).json({
       message: "Server Error",
-      error: process.env.NODE_ENV === "production" ? undefined : err.message,
+      error:
+        process.env.NODE_ENV === "production" ? undefined : err.message,
     });
   }
 };
