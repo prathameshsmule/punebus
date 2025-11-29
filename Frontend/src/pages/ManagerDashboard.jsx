@@ -69,17 +69,25 @@ const ManagerDashboard = () => {
   // Backend interactions
   // ----------------------------
 
-  // fetch stats
+  // fetch stats (UPDATED WITH TOKEN)
   const fetchStats = async () => {
     try {
-      const res = await api.get("/admin/stats");
+      const token = localStorage.getItem("token");
+
+      const res = await api.get("/admin/stats", {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
       setStats(res.data);
     } catch (err) {
       console.error("fetchStats:", err);
+      setStats(null);
     }
   };
 
-  // fetch users
+  // fetch users (UPDATED WITH TOKEN)
   const fetchUsers = async (
     role = activeTab,
     pageParam = page,
@@ -92,13 +100,20 @@ const ManagerDashboard = () => {
     }
     setLoading(true);
     try {
+      const token = localStorage.getItem("token");
       const roleParam = role === "all" ? "all" : role;
       const qp = new URLSearchParams({
         page: pageParam,
         limit,
         search: searchParam || "",
       });
-      const res = await api.get(`/admin/list/${roleParam}?${qp.toString()}`);
+
+      const res = await api.get(`/admin/list/${roleParam}?${qp.toString()}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
       setUsers(res.data.users || []);
       setTotal(res.data.total || 0);
     } catch (err) {
@@ -528,7 +543,9 @@ const ManagerDashboard = () => {
         }}
       >
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 800, color: "#111827", fontSize: 15 }}>
+          <div
+            style={{ fontWeight: 800, color: "#111827", fontSize: 15 }}
+          >
             {eq.companyName !== "-"
               ? eq.companyName
               : eq.contactPersonName !== "-"
@@ -546,7 +563,9 @@ const ManagerDashboard = () => {
               }}
             >
               Contact Person:{" "}
-              <span style={{ fontWeight: 800 }}>{eq.contactPersonName}</span>
+              <span style={{ fontWeight: 800 }}>
+                {eq.contactPersonName}
+              </span>
             </div>
           )}
 
@@ -600,7 +619,9 @@ const ManagerDashboard = () => {
             }}
           >
             Fleet:{" "}
-            <span style={{ fontWeight: 800 }}>{eq.numberOfFleet ?? "-"}</span>
+            <span style={{ fontWeight: 800 }}>
+              {eq.numberOfFleet ?? "-"}
+            </span>
           </div>
 
           <div
@@ -610,7 +631,9 @@ const ManagerDashboard = () => {
               color: "#6b7280",
             }}
           >
-            {eq.createdAt ? new Date(eq.createdAt).toLocaleString() : "-"}
+            {eq.createdAt
+              ? new Date(eq.createdAt).toLocaleString()
+              : "-"}
           </div>
 
           <div
@@ -656,7 +679,13 @@ const ManagerDashboard = () => {
               flexWrap: "wrap",
             }}
           >
-            <div style={{ fontWeight: 800, color: "#111827", fontSize: 15 }}>
+            <div
+              style={{
+                fontWeight: 800,
+                color: "#111827",
+                fontSize: 15,
+              }}
+            >
               {u.companyName || "—"}
             </div>
             <div
@@ -738,8 +767,8 @@ const ManagerDashboard = () => {
               color: "#6b7280",
             }}
           >
-            GST: {u.gstNumber || "-"} | PAN: {u.panNumber || "-"} | Aadhar:{" "}
-            {u.aadharNumber || "-"}
+            GST: {u.gstNumber || "-"} | PAN: {u.panNumber || "-"} |
+            Aadhar: {u.aadharNumber || "-"}
           </div>
         </div>
       </div>
@@ -794,7 +823,10 @@ const ManagerDashboard = () => {
           color: "#6b7280",
         }}
       >
-        {s.startDate ? new Date(s.startDate).toLocaleDateString() : "-"} →{" "}
+        {s.startDate
+          ? new Date(s.startDate).toLocaleDateString()
+          : "-"}{" "}
+        →{" "}
         {s.endDate ? new Date(s.endDate).toLocaleDateString() : "-"}
       </div>
       <div
@@ -1067,7 +1099,9 @@ const ManagerDashboard = () => {
                 onClick={toggleSubscriptions}
                 style={subscriptionBtnStyle}
               >
-                {showSubscriptionsPanel ? "Hide Subscriptions" : "Subscriptions"}
+                {showSubscriptionsPanel
+                  ? "Hide Subscriptions"
+                  : "Subscriptions"}
               </button>
             </div>
           </div>
@@ -1094,7 +1128,9 @@ const ManagerDashboard = () => {
                 flexWrap: "wrap",
               }}
             >
-              <h3 style={{ fontSize: 16, fontWeight: 700 }}>Subscriptions</h3>
+              <h3 style={{ fontSize: 16, fontWeight: 700 }}>
+                Subscriptions
+              </h3>
               <div
                 style={{
                   display: "flex",
@@ -1123,7 +1159,9 @@ const ManagerDashboard = () => {
                     color: "#6b7280",
                   }}
                 >
-                  {loadingSubscriptions ? "Loading..." : `${subTotal} total`}
+                  {loadingSubscriptions
+                    ? "Loading..."
+                    : `${subTotal} total`}
                 </div>
                 <div
                   style={{
@@ -1197,22 +1235,29 @@ const ManagerDashboard = () => {
                       <tr
                         key={s._id}
                         style={{
-                          background: idx % 2 === 0 ? "white" : "#f9fafb",
+                          background:
+                            idx % 2 === 0 ? "white" : "#f9fafb",
                         }}
                       >
                         <td style={tdStyle}>{s.name}</td>
                         <td style={tdStyle}>{s.phone}</td>
                         <td style={tdStyle}>{s.email || "-"}</td>
                         <td style={tdStyle}>{s.plan}</td>
-                        <td style={tdStyle}>{s.durationMonths} months</td>
+                        <td style={tdStyle}>
+                          {s.durationMonths} months
+                        </td>
                         <td style={tdStyle}>
                           {s.startDate
-                            ? new Date(s.startDate).toLocaleDateString()
+                            ? new Date(
+                                s.startDate
+                              ).toLocaleDateString()
                             : "-"}
                         </td>
                         <td style={tdStyle}>
                           {s.endDate
-                            ? new Date(s.endDate).toLocaleDateString()
+                            ? new Date(
+                                s.endDate
+                              ).toLocaleDateString()
                             : "-"}
                         </td>
                         <td style={tdStyle}>
@@ -1257,7 +1302,10 @@ const ManagerDashboard = () => {
                   >
                     Page <strong>{subPage}</strong> of{" "}
                     <strong>
-                      {Math.max(1, Math.ceil(subTotal / subLimit))}
+                      {Math.max(
+                        1,
+                        Math.ceil(subTotal / subLimit)
+                      )}
                     </strong>{" "}
                     — <strong>{subTotal}</strong> total
                   </div>
@@ -1270,7 +1318,9 @@ const ManagerDashboard = () => {
                       First
                     </button>
                     <button
-                      onClick={() => goSubPage(Math.max(1, subPage - 1))}
+                      onClick={() =>
+                        goSubPage(Math.max(1, subPage - 1))
+                      }
                       disabled={subPage === 1}
                       style={paginationButtonStyle(subPage === 1)}
                     >
@@ -1285,7 +1335,9 @@ const ManagerDashboard = () => {
                           )
                         )
                       }
-                      disabled={subPage >= Math.ceil(subTotal / subLimit)}
+                      disabled={
+                        subPage >= Math.ceil(subTotal / subLimit)
+                      }
                       style={paginationButtonStyle(
                         subPage >= Math.ceil(subTotal / subLimit)
                       )}
@@ -1294,9 +1346,16 @@ const ManagerDashboard = () => {
                     </button>
                     <button
                       onClick={() =>
-                        goSubPage(Math.max(1, Math.ceil(subTotal / subLimit)))
+                        goSubPage(
+                          Math.max(
+                            1,
+                            Math.ceil(subTotal / subLimit)
+                          )
+                        )
                       }
-                      disabled={subPage >= Math.ceil(subTotal / subLimit)}
+                      disabled={
+                        subPage >= Math.ceil(subTotal / subLimit)
+                      }
                       style={paginationButtonStyle(
                         subPage >= Math.ceil(subTotal / subLimit)
                       )}
@@ -1334,7 +1393,9 @@ const ManagerDashboard = () => {
                 </h3>
                 <button
                   aria-label="Close add subscription modal"
-                  onClick={() => setShowAddSubscriptionModal(false)}
+                  onClick={() =>
+                    setShowAddSubscriptionModal(false)
+                  }
                   style={{
                     background: "transparent",
                     border: "none",
@@ -1346,7 +1407,10 @@ const ManagerDashboard = () => {
                 </button>
               </div>
 
-              <form onSubmit={handleCreateSubscription} style={{ padding: 16 }}>
+              <form
+                onSubmit={handleCreateSubscription}
+                style={{ padding: 16 }}
+              >
                 <div
                   style={{
                     display: "grid",
@@ -1412,7 +1476,10 @@ const ManagerDashboard = () => {
                     onChange={(e) =>
                       setSubscriptionForm({
                         ...subscriptionForm,
-                        durationMonths: parseInt(e.target.value, 10),
+                        durationMonths: parseInt(
+                          e.target.value,
+                          10
+                        ),
                       })
                     }
                     style={inputStyle}
@@ -1439,7 +1506,10 @@ const ManagerDashboard = () => {
                     type="date"
                     value={subscriptionForm.endDate || ""}
                     readOnly
-                    style={{ ...inputStyle, background: "#f8fafc" }}
+                    style={{
+                      ...inputStyle,
+                      background: "#f8fafc",
+                    }}
                     placeholder="End date (auto)"
                   />
                   <input
@@ -1463,12 +1533,17 @@ const ManagerDashboard = () => {
                     marginTop: 12,
                   }}
                 >
-                  <button type="submit" style={primaryButtonStyle}>
+                  <button
+                    type="submit"
+                    style={primaryButtonStyle}
+                  >
                     Create Subscription
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowAddSubscriptionModal(false)}
+                    onClick={() =>
+                      setShowAddSubscriptionModal(false)
+                    }
                     style={secondaryButtonStyle}
                   >
                     Cancel
@@ -1500,7 +1575,9 @@ const ManagerDashboard = () => {
                 flexWrap: "wrap",
               }}
             >
-              <h3 style={{ fontSize: 16, fontWeight: 700 }}>Enquiries</h3>
+              <h3 style={{ fontSize: 16, fontWeight: 700 }}>
+                Enquiries
+              </h3>
               <div
                 style={{
                   display: "flex",
@@ -1587,7 +1664,8 @@ const ManagerDashboard = () => {
                       <tr
                         key={eq._id}
                         style={{
-                          background: idx % 2 === 0 ? "white" : "#f9fafb",
+                          background:
+                            idx % 2 === 0 ? "white" : "#f9fafb",
                         }}
                       >
                         <td style={tdStyle}>{eq.companyName}</td>
@@ -1625,17 +1703,23 @@ const ManagerDashboard = () => {
                         >
                           {eq.address}
                         </td>
-                        <td style={tdStyle}>{eq.numberOfFleet ?? "-"}</td>
+                        <td style={tdStyle}>
+                          {eq.numberOfFleet ?? "-"}
+                        </td>
                         <td style={tdStyle}>
                           {eq.createdAt
-                            ? new Date(eq.createdAt).toLocaleString()
+                            ? new Date(
+                                eq.createdAt
+                              ).toLocaleString()
                             : "-"}
                         </td>
                         <td
                           style={{
                             ...tdStyle,
                             color:
-                              eq.status === "done" ? "#065f46" : "#92400e",
+                              eq.status === "done"
+                                ? "#065f46"
+                                : "#92400e",
                             fontWeight: 700,
                           }}
                         >
@@ -1718,7 +1802,9 @@ const ManagerDashboard = () => {
                 No users found.
               </div>
             ) : isMobile ? (
-              <div style={{ padding: 12 }}>{users.map(renderUserCard)}</div>
+              <div style={{ padding: 12 }}>
+                {users.map(renderUserCard)}
+              </div>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table
@@ -1752,7 +1838,8 @@ const ManagerDashboard = () => {
                       <tr
                         key={u._id}
                         style={{
-                          background: idx % 2 === 0 ? "white" : "#f9fafb",
+                          background:
+                            idx % 2 === 0 ? "white" : "#f9fafb",
                         }}
                       >
                         <td style={tdStyle}>{u.companyName || "-"}</td>
@@ -1760,7 +1847,9 @@ const ManagerDashboard = () => {
                         <td style={tdStyle}>{u.city || "-"}</td>
                         <td style={tdStyle}>{u.area || "-"}</td>
                         <td style={tdStyle}>{u.whatsappPhone || "-"}</td>
-                        <td style={tdStyle}>{u.officeNumber || "-"}</td>
+                        <td style={tdStyle}>
+                          {u.officeNumber || "-"}
+                        </td>
                         <td style={tdStyle}>
                           <span
                             style={{
@@ -1768,19 +1857,29 @@ const ManagerDashboard = () => {
                               borderRadius: 999,
                               fontSize: 12,
                               fontWeight: 700,
-                              background: `${getRoleColor(u.role)}20`,
+                              background: `${getRoleColor(
+                                u.role
+                              )}20`,
                               color: getRoleColor(u.role),
                             }}
                           >
                             {u.role}
                           </span>
                         </td>
-                        <td style={tdStyle}>{u.gstNumber || "-"}</td>
+                        <td style={tdStyle}>
+                          {u.gstNumber || "-"}
+                        </td>
                         <td style={tdStyle}>{u.panNumber || "-"}</td>
-                        <td style={tdStyle}>{u.aadharNumber || "-"}</td>
-                        <td style={tdStyle}>{u.bankAccountNumber || "-"}</td>
+                        <td style={tdStyle}>
+                          {u.aadharNumber || "-"}
+                        </td>
+                        <td style={tdStyle}>
+                          {u.bankAccountNumber || "-"}
+                        </td>
                         <td style={tdStyle}>{u.ifscCode || "-"}</td>
-                        <td style={tdStyle}>{u.cancelCheque || "-"}</td>
+                        <td style={tdStyle}>
+                          {u.cancelCheque || "-"}
+                        </td>
                         <td style={tdStyle}>{u.email || "-"}</td>
                         <td
                           style={{
@@ -1838,7 +1937,9 @@ const ManagerDashboard = () => {
               <span style={{ fontWeight: 700 }}>
                 {Math.max(1, Math.ceil(total / limit))}
               </span>{" "}
-              — <span style={{ fontWeight: 700 }}>{total}</span> total users
+              —{" "}
+              <span style={{ fontWeight: 700 }}>{total}</span> total
+              users
             </div>
             <div
               style={{
@@ -1866,7 +1967,9 @@ const ManagerDashboard = () => {
                   goPage(Math.min(Math.ceil(total / limit), page + 1))
                 }
                 disabled={page >= Math.ceil(total / limit)}
-                style={paginationButtonStyle(page >= Math.ceil(total / limit))}
+                style={paginationButtonStyle(
+                  page >= Math.ceil(total / limit)
+                )}
               >
                 Next
               </button>
@@ -1875,7 +1978,9 @@ const ManagerDashboard = () => {
                   goPage(Math.max(1, Math.ceil(total / limit)))
                 }
                 disabled={page >= Math.ceil(total / limit)}
-                style={paginationButtonStyle(page >= Math.ceil(total / limit))}
+                style={paginationButtonStyle(
+                  page >= Math.ceil(total / limit)
+                )}
               >
                 Last
               </button>
