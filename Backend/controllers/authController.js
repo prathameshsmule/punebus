@@ -49,7 +49,8 @@ export const registerUser = async (req, res) => {
     // ❌ Public route se admin ya staff roles register NHI honge
     if (role === "admin" || STAFF_ROLES.includes(role)) {
       return res.status(403).json({
-        message: "Cannot register as admin or staff via public route. Please contact admin.",
+        message:
+          "Cannot register as admin or staff via public route. Please contact admin.",
       });
     }
 
@@ -99,39 +100,54 @@ export const registerUser = async (req, res) => {
 };
 
 // =====================================================
-// ADMIN LOGIN (OLD SYSTEM — SAME AS BEFORE)
+// ADMIN + STAFF LOGIN (admin, manager, accountant, branchHead, sales)
+// Body: { email, password, role }
 // =====================================================
-
 export const adminLogin = async (req, res) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password, role } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ message: "Email and password required" });
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
+    }
+
+    // body se aaya role; default admin
+    const requestedRole = (role || "admin").trim();
+
+    const ALLOWED_ROLES = ["admin", ...STAFF_ROLES];
+
+    // koi aur role se login ki koshish kare to block
+    if (!ALLOWED_ROLES.includes(requestedRole)) {
+      return res.status(403).json({ message: "Invalid role for staff login" });
+    }
+
+    // ab email + role dono match hone chahiye
+    const user = await User.findOne({ email, role: requestedRole });
+
+    if (!user || !user.password) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const token = signToken(user._id);
+
+    return res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name || user.companyName || "",
+        email: user.email,
+        role: user.role, // yahi real role hai jisse frontend redirect karega
+      },
+    });
+  } catch (err) {
+    console.error("[adminLogin] error:", err);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: err.message });
   }
-
-  // OLD admin format: name, email, password, role: "admin"
-  const admin = await User.findOne({ email, role: "admin" });
-
-  if (!admin) {
-    return res.status(401).json({ message: "Invalid credentials" });
-  }
-
-  const isMatch = await bcrypt.compare(password, admin.password);
-  if (!isMatch) {
-    return res.status(401).json({ message: "Invalid credentials" });
-  }
-
-  const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, {
-    expiresIn: "7d",
-  });
-
-  res.json({
-    token,
-    user: {
-      id: admin._id,
-      name: admin.name, // OLD NAME SUPPORT
-      email: admin.email,
-      role: admin.role,
-    },
-  });
 };
