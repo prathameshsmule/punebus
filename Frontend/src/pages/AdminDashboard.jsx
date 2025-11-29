@@ -5,14 +5,13 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
 
-// Tabs / filtering roles
+// Tabs / filtering roles for main users table (partners etc.)
 const ROLES = [
   "all",
   "driver",
   "Bus vendor",
   "mechanic",
   "cleaner",
-  "admin",
   "restaurant",
   "parcel",
   "Dry Cleaner",
@@ -37,6 +36,9 @@ const CITY_OPTIONS_BY_STATE = {
   Other: ["Other"],
 };
 
+// internal staff roles
+const STAFF_ROLES = ["admin", "manager", "accountant", "branch-head", "sales"];
+
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [activeTab, setActiveTab] = useState("driver");
@@ -54,7 +56,7 @@ const AdminDashboard = () => {
   const [showAddSubscriptionModal, setShowAddSubscriptionModal] =
     useState(false);
 
-  // NEW USER STRUCTURE
+  // NEW USER STRUCTURE (partners)
   const [newUser, setNewUser] = useState({
     companyName: "",
     address: "",
@@ -104,6 +106,21 @@ const AdminDashboard = () => {
   const subscriptionPlans = ["Gold", "Silver", "Platinum"];
   const durationOptions = [3, 6, 12];
 
+  // Staff / Roles section
+  const [showStaffPanel, setShowStaffPanel] = useState(false);
+  const [staffUsers, setStaffUsers] = useState([]);
+  const [loadingStaff, setLoadingStaff] = useState(false);
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+  const [staffForm, setStaffForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    phone: "",
+    aadharNumber: "",
+    address: "",
+    role: "manager",
+  });
+
   // responsive
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth <= 768 : false
@@ -124,12 +141,19 @@ const AdminDashboard = () => {
       showEditModal ||
       showDeleteModal ||
       showAddUserModal ||
-      showAddSubscriptionModal;
+      showAddSubscriptionModal ||
+      showAddStaffModal;
     document.body.style.overflow = open ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [showEditModal, showDeleteModal, showAddUserModal, showAddSubscriptionModal]);
+  }, [
+    showEditModal,
+    showDeleteModal,
+    showAddUserModal,
+    showAddSubscriptionModal,
+    showAddStaffModal,
+  ]);
 
   // ESC to close modals
   useEffect(() => {
@@ -149,11 +173,20 @@ const AdminDashboard = () => {
         if (showAddSubscriptionModal) {
           setShowAddSubscriptionModal(false);
         }
+        if (showAddStaffModal) {
+          setShowAddStaffModal(false);
+        }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showEditModal, showDeleteModal, showAddUserModal, showAddSubscriptionModal]);
+  }, [
+    showEditModal,
+    showDeleteModal,
+    showAddUserModal,
+    showAddSubscriptionModal,
+    showAddStaffModal,
+  ]);
 
   // ----------------------------
   // Backend interactions
@@ -169,7 +202,7 @@ const AdminDashboard = () => {
     }
   };
 
-  // fetch users
+  // fetch users (partners list per role tabs)
   const fetchUsers = async (
     role = activeTab,
     pageParam = page,
@@ -197,6 +230,28 @@ const AdminDashboard = () => {
       setTotal(0);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // fetch staff / roles (internal users)
+  const fetchStaffUsers = async () => {
+    setLoadingStaff(true);
+    try {
+      // get all users with big limit, filter staff roles on frontend
+      const qp = new URLSearchParams({
+        page: 1,
+        limit: 1000,
+        search: "",
+      });
+      const res = await api.get(`/admin/list/all?${qp.toString()}`);
+      const list = res.data.users || [];
+      const staff = list.filter((u) => STAFF_ROLES.includes(u.role));
+      setStaffUsers(staff);
+    } catch (err) {
+      console.error("fetchStaffUsers:", err);
+      setStaffUsers([]);
+    } finally {
+      setLoadingStaff(false);
     }
   };
 
@@ -421,7 +476,7 @@ const AdminDashboard = () => {
     }
   };
 
-  // users: create
+  // users: create (partners)
   const handleCreateUser = async (e) => {
     e.preventDefault();
     try {
@@ -455,6 +510,47 @@ const AdminDashboard = () => {
     }
   };
 
+  // staff: create (roles)
+  const handleCreateStaff = async (e) => {
+    e.preventDefault();
+    const { name, email, password, phone, aadharNumber, address, role } =
+      staffForm;
+    if (!name || !password || !phone || !role) {
+      alert("Name, phone, password and role are required");
+      return;
+    }
+    try {
+      const payload = {
+        // backend ke hisaab se adjust kar sakte ho
+        companyName: name,
+        name,
+        email,
+        password,
+        whatsappPhone: phone,
+        aadharNumber,
+        address,
+        role,
+      };
+      const res = await api.post("/admin/user", payload);
+      alert(res.data?.message || "Staff / role user created");
+      setStaffForm({
+        name: "",
+        email: "",
+        password: "",
+        phone: "",
+        aadharNumber: "",
+        address: "",
+        role: "manager",
+      });
+      setShowAddStaffModal(false);
+      fetchStaffUsers();
+      fetchStats();
+    } catch (err) {
+      console.error("create staff err:", err);
+      alert(err?.response?.data?.message || "Failed to create staff user");
+    }
+  };
+
   // users: edit
   const openEdit = (user) => {
     setEditingUser({
@@ -474,7 +570,11 @@ const AdminDashboard = () => {
       alert(res.data.message || "User updated");
       setShowEditModal(false);
       setEditingUser(null);
-      fetchUsers(activeTab, page, search);
+      if (showStaffPanel) {
+        fetchStaffUsers();
+      } else {
+        fetchUsers(activeTab, page, search);
+      }
       fetchStats();
     } catch (err) {
       alert(err?.response?.data?.message || "Update failed");
@@ -497,31 +597,39 @@ const AdminDashboard = () => {
       setDeletingUser(null);
       const newTotal = Math.max(0, total - 1);
       const lastPage = Math.max(1, Math.ceil(newTotal / limit));
-      if (page > lastPage) setPage(lastPage);
-      fetchUsers(activeTab, page > lastPage ? lastPage : page, search);
+      if (!showStaffPanel) {
+        if (page > lastPage) setPage(lastPage);
+        fetchUsers(activeTab, page > lastPage ? lastPage : page, search);
+      } else {
+        fetchStaffUsers();
+      }
       fetchStats();
     } catch (err) {
       alert(err?.response?.data?.message || "Delete failed");
     }
   };
 
-  // tab changes
+  // tab changes (partners)
   const changeTab = (r) => {
     setActiveTab(r === "all" ? "all" : r);
     setPage(1);
     setSearch("");
     setShowEnquiries(false);
     setShowSubscriptionsPanel(false);
+    setShowStaffPanel(false);
     setShowAddUserModal(false);
     setShowAddSubscriptionModal(false);
+    setShowAddStaffModal(false);
   };
 
   const toggleEnquiries = () => {
     const next = !showEnquiries;
     setShowEnquiries(next);
     setShowSubscriptionsPanel(false);
+    setShowStaffPanel(false);
     setShowAddUserModal(false);
     setShowAddSubscriptionModal(false);
+    setShowAddStaffModal(false);
     if (next) {
       setActiveTab(null);
       fetchEnquiries();
@@ -534,13 +642,30 @@ const AdminDashboard = () => {
     const next = !showSubscriptionsPanel;
     setShowSubscriptionsPanel(next);
     setShowEnquiries(false);
+    setShowStaffPanel(false);
     setShowAddUserModal(false);
     setShowAddSubscriptionModal(false);
+    setShowAddStaffModal(false);
     if (next) {
       setActiveTab(null);
       setSubPage(1);
       setSubSearch("");
       fetchSubscriptions(1, "");
+    } else {
+      setActiveTab("driver");
+    }
+  };
+
+  const toggleStaffPanel = () => {
+    const next = !showStaffPanel;
+    setShowStaffPanel(next);
+    setShowEnquiries(false);
+    setShowSubscriptionsPanel(false);
+    setShowAddUserModal(false);
+    setShowAddSubscriptionModal(false);
+    if (next) {
+      setActiveTab(null);
+      fetchStaffUsers();
     } else {
       setActiveTab("driver");
     }
@@ -570,7 +695,7 @@ const AdminDashboard = () => {
   }, []);
 
   useEffect(() => {
-    fetchUsers(activeTab, page, search);
+    if (activeTab) fetchUsers(activeTab, page, search);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, page]);
 
@@ -579,11 +704,15 @@ const AdminDashboard = () => {
 
   const getRoleColor = (role) => {
     const colors = {
+      admin: "#ef4444",
+      manager: "#6366f1",
+      accountant: "#22c55e",
+      "branch-head": "#0ea5e9",
+      sales: "#facc15",
       driver: "#3b82f6",
       "Bus vendor": "#a855f7",
       mechanic: "#f97316",
       cleaner: "#10b981",
-      admin: "#ef4444",
       restaurant: "#22c55e",
       parcel: "#0ea5e9",
       "Dry Cleaner": "#14b8a6",
@@ -623,52 +752,7 @@ const AdminDashboard = () => {
     XLSX.writeFile(wb, fileName);
   };
 
-  // Users export (UPDATED FIELDS)
-  const handleExportUsersPDF = () => {
-    const cols = [
-      "Company",
-      "State",
-      "City",
-      "Area",
-      "WhatsApp Phone",
-      "Office No.",
-      "Role",
-      "GSTN",
-      "PAN",
-      "Aadhar",
-      "Bank A/c",
-      "IFSC",
-      "Cancel Cheque",
-      "Email",
-      "About",
-      "Address",
-    ];
-    const rows = users.map((u) => [
-      u.companyName,
-      u.state || "-",
-      u.city || "-",
-      u.area || "-",
-      u.whatsappPhone || "-",
-      u.officeNumber || "-",
-      u.role || "-",
-      u.gstNumber || "-",
-      u.panNumber || "-",
-      u.aadharNumber || "-",
-      u.bankAccountNumber || "-",
-      u.ifscCode || "-",
-      u.cancelCheque || "-",
-      u.email || "-",
-      u.aboutInfo || "-",
-      u.address || "-",
-    ]);
-    exportToPDF(
-      `${roleLabel(activeTab || "all")} Users`,
-      cols,
-      rows,
-      `users-${activeTab || "all"}.pdf`
-    );
-  };
-
+  // Users export (partners)
   const handleExportUsersExcel = () => {
     const cols = [
       "Company",
@@ -709,37 +793,21 @@ const AdminDashboard = () => {
     exportToExcel(cols, rows, `users-${activeTab || "all"}.xlsx`);
   };
 
-  // Enquiries export
-  const handleExportEnquiriesPDF = () => {
-    const cols = [
-      "Company",
-      "Contact Person",
-      "Contact No.",
-      "Email",
-      "Membership",
-      "Company Details",
-      "Company Address",
-      "Address",
-      "Fleet",
-      "Date",
-      "Status",
-    ];
-    const rows = enquiries.map((eq) => [
-      eq.companyName,
-      eq.contactPersonName,
-      eq.contactNo,
-      eq.email,
-      eq.membership,
-      eq.companyDetails,
-      eq.companyAddress,
-      eq.address,
-      eq.numberOfFleet ?? "-",
-      eq.createdAt ? new Date(eq.createdAt).toLocaleString() : "-",
-      eq.status,
+  // Staff export
+  const handleExportStaffExcel = () => {
+    const cols = ["Name", "Role", "Email", "Phone", "Aadhar", "Address"];
+    const rows = staffUsers.map((u) => [
+      u.companyName || u.name || "-",
+      u.role || "-",
+      u.email || "-",
+      u.whatsappPhone || u.officeNumber || "-",
+      u.aadharNumber || "-",
+      u.address || "-",
     ]);
-    exportToPDF("Enquiries", cols, rows, "enquiries.pdf");
+    exportToExcel(cols, rows, "staff-roles.xlsx");
   };
 
+  // Enquiries export
   const handleExportEnquiriesExcel = () => {
     const cols = [
       "Company",
@@ -771,32 +839,6 @@ const AdminDashboard = () => {
   };
 
   // Subscriptions export
-  const handleExportSubscriptionsPDF = () => {
-    const cols = [
-      "Name",
-      "Phone",
-      "Email",
-      "Plan",
-      "Duration (months)",
-      "Start Date",
-      "End Date",
-      "Status",
-      "Notes",
-    ];
-    const rows = subscriptions.map((s) => [
-      s.name,
-      s.phone,
-      s.email || "-",
-      s.plan,
-      s.durationMonths,
-      s.startDate ? new Date(s.startDate).toLocaleDateString() : "-",
-      s.endDate ? new Date(s.endDate).toLocaleDateString() : "-",
-      s.status,
-      s.notes || "",
-    ]);
-    exportToPDF("Subscriptions", cols, rows, "subscriptions.pdf");
-  };
-
   const handleExportSubscriptionsExcel = () => {
     const cols = [
       "Name",
@@ -985,7 +1027,7 @@ const AdminDashboard = () => {
     </div>
   );
 
-  // User mobile card (UPDATED)
+  // User mobile card (partners)
   const renderUserCard = (u) => (
     <div
       key={u._id}
@@ -1120,10 +1162,10 @@ const AdminDashboard = () => {
     </div>
   );
 
-  // Subscription mobile card
-  const renderSubscriptionCard = (s) => (
+  // Staff / role mobile card
+  const renderStaffCard = (u) => (
     <div
-      key={s._id}
+      key={u._id}
       style={{
         background: "white",
         borderRadius: 12,
@@ -1132,68 +1174,95 @@ const AdminDashboard = () => {
         border: "1px solid #e5e7eb",
       }}
     >
-      <div style={{ fontWeight: 800, color: "#111827", fontSize: 15 }}>
-        {s.name}
-      </div>
       <div
         style={{
-          marginTop: 6,
-          fontSize: 13,
-          color: "#374151",
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 8,
+          alignItems: "flex-start",
         }}
       >
-        {s.phone}
-      </div>
-      <div
-        style={{
-          marginTop: 6,
-          fontSize: 13,
-          color: "#6b7280",
-        }}
-      >
-        {s.email || "-"}
-      </div>
-      <div
-        style={{
-          marginTop: 6,
-          fontSize: 13,
-          color: "#111827",
-        }}
-      >
-        {s.plan} • {s.durationMonths} months
-      </div>
-      <div
-        style={{
-          marginTop: 6,
-          fontSize: 12,
-          color: "#6b7280",
-        }}
-      >
-        {s.startDate ? new Date(s.startDate).toLocaleDateString() : "-"} →{" "}
-        {s.endDate ? new Date(s.endDate).toLocaleDateString() : "-"}
-      </div>
-      <div
-        style={{
-          marginTop: 6,
-          fontSize: 12,
-          color: "#6b7280",
-        }}
-      >
-        Status: {s.status}
-      </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-        <button
-          onClick={() => navigator.clipboard?.writeText(s._id)}
-          style={editBtnStyle}
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ fontWeight: 800, color: "#111827", fontSize: 15 }}>
+              {u.companyName || u.name || "—"}
+            </div>
+            <span
+              style={{
+                padding: "4px 10px",
+                borderRadius: 999,
+                fontSize: 12,
+                fontWeight: 700,
+                background: `${getRoleColor(u.role)}20`,
+                color: getRoleColor(u.role),
+              }}
+            >
+              {u.role}
+            </span>
+          </div>
+          {u.email && (
+            <div
+              style={{
+                marginTop: 6,
+                fontSize: 13,
+                color: "#6b7280",
+              }}
+            >
+              {u.email}
+            </div>
+          )}
+          <div
+            style={{
+              marginTop: 4,
+              fontSize: 13,
+              color: "#374151",
+            }}
+          >
+            Phone: <strong>{u.whatsappPhone || u.officeNumber || "-"}</strong>
+          </div>
+          <div
+            style={{
+              marginTop: 4,
+              fontSize: 13,
+              color: "#374151",
+            }}
+          >
+            Aadhar: {u.aadharNumber || "-"}
+          </div>
+          {u.address && (
+            <div
+              style={{
+                marginTop: 4,
+                fontSize: 13,
+                color: "#374151",
+              }}
+            >
+              {u.address}
+            </div>
+          )}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            minWidth: 120,
+          }}
         >
-          Copy ID
-        </button>
-        <button
-          onClick={() => handleDeleteSubscription(s._id)}
-          style={deleteBtnStyle}
-        >
-          Delete
-        </button>
+          <button onClick={() => openEdit(u)} style={editBtnStyle}>
+            Edit
+          </button>
+          <button onClick={() => openDelete(u)} style={deleteBtnStyle}>
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1256,6 +1325,18 @@ const AdminDashboard = () => {
     fontWeight: 700,
     flexShrink: 0,
   };
+  const staffBtnStyle = {
+    padding: isMobile ? "8px 10px" : "9px 14px",
+    background: showStaffPanel
+      ? "linear-gradient(135deg,#22c55e, #16a34a)"
+      : "#f3f4f6",
+    color: showStaffPanel ? "white" : "#374151",
+    border: "none",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontWeight: 700,
+    flexShrink: 0,
+  };
 
   const availableUserCities =
     CITY_OPTIONS_BY_STATE[newUser.state] || CITY_OPTIONS_BY_STATE["Other"];
@@ -1293,7 +1374,7 @@ const AdminDashboard = () => {
               fontSize: isMobile ? 13 : 14,
             }}
           >
-            Manage your users, enquiries and monitor statistics
+            Manage your users, enquiries, subscriptions and internal staff roles
           </p>
         </div>
 
@@ -1400,6 +1481,7 @@ const AdminDashboard = () => {
               justifyContent: "space-between",
             }}
           >
+            {/* Partner roles tabs */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {ROLES.map((r) => (
                 <button
@@ -1429,6 +1511,7 @@ const AdminDashboard = () => {
               ))}
             </div>
 
+            {/* Right side buttons */}
             <div
               style={{
                 display: "flex",
@@ -1454,18 +1537,24 @@ const AdminDashboard = () => {
                 onClick={() => setShowAddUserModal(true)}
                 style={addBtnStyle}
               >
-                + Add User
+                + Add Partner
               </button>
 
               <button onClick={toggleEnquiries} style={enquiryBtnStyle}>
-                {showEnquiries ? "Hide Enquiries" : "Show Enquiries"}
+                {showEnquiries ? "Hide Enquiries" : "Enquiries"}
               </button>
 
               <button
                 onClick={toggleSubscriptions}
                 style={subscriptionBtnStyle}
               >
-                {showSubscriptionsPanel ? "Hide Subscriptions" : "Subscriptions"}
+                {showSubscriptionsPanel
+                  ? "Hide Subscriptions"
+                  : "Subscriptions"}
+              </button>
+
+              <button onClick={toggleStaffPanel} style={staffBtnStyle}>
+                {showStaffPanel ? "Hide Staff / Roles" : "Staff / Roles"}
               </button>
             </div>
           </div>
@@ -1548,7 +1637,6 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            {/* Subscriptions List */}
             {loadingSubscriptions ? (
               <div
                 style={{
@@ -1570,7 +1658,95 @@ const AdminDashboard = () => {
                 No subscriptions found.
               </div>
             ) : isMobile ? (
-              <div>{subscriptions.map(renderSubscriptionCard)}</div>
+              <div>
+                {subscriptions.map((s) => (
+                  <div
+                    key={s._id}
+                    style={{
+                      background: "white",
+                      borderRadius: 12,
+                      padding: 12,
+                      marginBottom: 10,
+                      border: "1px solid #e5e7eb",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 800,
+                        color: "#111827",
+                        fontSize: 15,
+                      }}
+                    >
+                      {s.name}
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 13,
+                        color: "#374151",
+                      }}
+                    >
+                      {s.phone}
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 13,
+                        color: "#6b7280",
+                      }}
+                    >
+                      {s.email || "-"}
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 13,
+                        color: "#111827",
+                      }}
+                    >
+                      {s.plan} • {s.durationMonths} months
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 12,
+                        color: "#6b7280",
+                      }}
+                    >
+                      {s.startDate
+                        ? new Date(s.startDate).toLocaleDateString()
+                        : "-"}{" "}
+                      →{" "}
+                      {s.endDate
+                        ? new Date(s.endDate).toLocaleDateString()
+                        : "-"}
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 12,
+                        color: "#6b7280",
+                      }}
+                    >
+                      Status: {s.status}
+                    </div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                      <button
+                        onClick={() => navigator.clipboard?.writeText(s._id)}
+                        style={editBtnStyle}
+                      >
+                        Copy ID
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSubscription(s._id)}
+                        style={deleteBtnStyle}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table
@@ -1707,6 +1883,177 @@ const AdminDashboard = () => {
                     </button>
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Staff / Roles Panel */}
+        {showStaffPanel && (
+          <div
+            style={{
+              background: "white",
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 16,
+              border: "1px solid #e5e7eb",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 12,
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <h3 style={{ fontSize: 16, fontWeight: 700 }}>
+                Internal Staff / Roles
+              </h3>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "#6b7280",
+                  }}
+                >
+                  {loadingStaff
+                    ? "Loading..."
+                    : `${staffUsers.length} staff members`}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleExportStaffExcel}
+                  style={exportBtnStyle}
+                >
+                  Download Excel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddStaffModal(true)}
+                  style={primaryButtonStyle}
+                >
+                  + Add Role / Staff
+                </button>
+              </div>
+            </div>
+
+            {loadingStaff ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: 20,
+                  color: "#6b7280",
+                }}
+              >
+                Loading staff...
+              </div>
+            ) : staffUsers.length === 0 ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: 20,
+                  color: "#6b7280",
+                }}
+              >
+                No staff / roles found.
+              </div>
+            ) : isMobile ? (
+              <div>{staffUsers.map(renderStaffCard)}</div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                  }}
+                >
+                  <thead style={{ background: "#f9fafb" }}>
+                    <tr>
+                      <th style={thStyle}>Name</th>
+                      <th style={thStyle}>Role</th>
+                      <th style={thStyle}>Email</th>
+                      <th style={thStyle}>Phone</th>
+                      <th style={thStyle}>Aadhar</th>
+                      <th style={thStyle}>Address</th>
+                      <th style={thStyle}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {staffUsers.map((u, idx) => (
+                      <tr
+                        key={u._id}
+                        style={{
+                          background: idx % 2 === 0 ? "white" : "#f9fafb",
+                        }}
+                      >
+                        <td style={tdStyle}>
+                          {u.companyName || u.name || "-"}
+                        </td>
+                        <td style={tdStyle}>
+                          <span
+                            style={{
+                              padding: "4px 10px",
+                              borderRadius: 999,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              background: `${getRoleColor(u.role)}20`,
+                              color: getRoleColor(u.role),
+                            }}
+                          >
+                            {u.role}
+                          </span>
+                        </td>
+                        <td style={tdStyle}>{u.email || "-"}</td>
+                        <td style={tdStyle}>
+                          {u.whatsappPhone || u.officeNumber || "-"}
+                        </td>
+                        <td style={tdStyle}>{u.aadharNumber || "-"}</td>
+                        <td
+                          style={{
+                            ...tdStyle,
+                            maxWidth: 260,
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {u.address || "-"}
+                        </td>
+                        <td style={tdStyle}>
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: 8,
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <button
+                              onClick={() => openEdit(u)}
+                              style={editBtnStyle}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => openDelete(u)}
+                              style={deleteBtnStyle}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
@@ -1923,262 +2270,265 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Users table / pagination */}
+        {/* Users table / pagination (partners) */}
         {activeTab && (
-          <div
-            style={{
-              background: "white",
-              borderRadius: 12,
-              boxShadow: "0 4px 6px rgba(0,0,0,0.04)",
-              overflow: "hidden",
-              border: "1px solid #e5e7eb",
-            }}
-          >
+          <>
             <div
               style={{
-                padding: 16,
-                borderBottom: "1px solid #e5e7eb",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 8,
-                flexWrap: "wrap",
+                background: "white",
+                borderRadius: 12,
+                boxShadow: "0 4px 6px rgba(0,0,0,0.04)",
+                overflow: "hidden",
+                border: "1px solid #e5e7eb",
               }}
             >
-              <h3
+              <div
                 style={{
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: "#1f2937",
+                  padding: 16,
+                  borderBottom: "1px solid #e5e7eb",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 8,
+                  flexWrap: "wrap",
                 }}
               >
-                {roleLabel(activeTab)} List
-              </h3>
+                <h3
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: "#1f2937",
+                  }}
+                >
+                  {roleLabel(activeTab)} List
+                </h3>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={handleExportUsersExcel}
+                    style={exportBtnStyle}
+                  >
+                    Download Excel
+                  </button>
+                </div>
+              </div>
+              {loading ? (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: 28,
+                    color: "#6b7280",
+                  }}
+                >
+                  Loading users...
+                </div>
+              ) : users.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: 28,
+                    color: "#6b7280",
+                  }}
+                >
+                  No users found.
+                </div>
+              ) : isMobile ? (
+                <div style={{ padding: 12 }}>{users.map(renderUserCard)}</div>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                    }}
+                  >
+                    <thead style={{ background: "#f9fafb" }}>
+                      <tr>
+                        <th style={thStyle}>Company</th>
+                        <th style={thStyle}>State</th>
+                        <th style={thStyle}>City</th>
+                        <th style={thStyle}>Area</th>
+                        <th style={thStyle}>WhatsApp Phone</th>
+                        <th style={thStyle}>Office No.</th>
+                        <th style={thStyle}>Role</th>
+                        <th style={thStyle}>GSTN</th>
+                        <th style={thStyle}>PAN</th>
+                        <th style={thStyle}>Aadhar</th>
+                        <th style={thStyle}>Bank A/c</th>
+                        <th style={thStyle}>IFSC</th>
+                        <th style={thStyle}>Cancel Cheque</th>
+                        <th style={thStyle}>Email</th>
+                        <th style={thStyle}>About</th>
+                        <th style={thStyle}>Address</th>
+                        <th style={thStyle}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.map((u, idx) => (
+                        <tr
+                          key={u._id}
+                          style={{
+                            background: idx % 2 === 0 ? "white" : "#f9fafb",
+                          }}
+                        >
+                          <td style={tdStyle}>{u.companyName || "-"}</td>
+                          <td style={tdStyle}>{u.state || "-"}</td>
+                          <td style={tdStyle}>{u.city || "-"}</td>
+                          <td style={tdStyle}>{u.area || "-"}</td>
+                          <td style={tdStyle}>{u.whatsappPhone || "-"}</td>
+                          <td style={tdStyle}>{u.officeNumber || "-"}</td>
+                          <td style={tdStyle}>
+                            <span
+                              style={{
+                                padding: "4px 10px",
+                                borderRadius: 999,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                background: `${getRoleColor(u.role)}20`,
+                                color: getRoleColor(u.role),
+                              }}
+                            >
+                              {u.role}
+                            </span>
+                          </td>
+                          <td style={tdStyle}>{u.gstNumber || "-"}</td>
+                          <td style={tdStyle}>{u.panNumber || "-"}</td>
+                          <td style={tdStyle}>{u.aadharNumber || "-"}</td>
+                          <td style={tdStyle}>{u.bankAccountNumber || "-"}</td>
+                          <td style={tdStyle}>{u.ifscCode || "-"}</td>
+                          <td style={tdStyle}>{u.cancelCheque || "-"}</td>
+                          <td style={tdStyle}>{u.email || "-"}</td>
+                          <td
+                            style={{
+                              ...tdStyle,
+                              maxWidth: 260,
+                              whiteSpace: "normal",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {u.aboutInfo || "-"}
+                          </td>
+                          <td
+                            style={{
+                              ...tdStyle,
+                              maxWidth: 260,
+                              whiteSpace: "normal",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {u.address || "-"}
+                          </td>
+                          <td style={tdStyle}>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <button
+                                onClick={() => openEdit(u)}
+                                style={editBtnStyle}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => openDelete(u)}
+                                style={deleteBtnStyle}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Pagination (partners) */}
+            <div
+              style={{
+                marginTop: 16,
+                display: "flex",
+                flexDirection: isMobile ? "column" : "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+                background: "white",
+                borderRadius: 12,
+                padding: 12,
+                border: "1px solid #e5e7eb",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 13,
+                  color: "#6b7280",
+                  textAlign: isMobile ? "center" : "left",
+                }}
+              >
+                Page <span style={{ fontWeight: 700 }}>{page}</span> of{" "}
+                <span style={{ fontWeight: 700 }}>
+                  {Math.max(1, Math.ceil(total / limit))}
+                </span>{" "}
+                — <span style={{ fontWeight: 700 }}>{total}</span> total users
+              </div>
               <div
                 style={{
                   display: "flex",
-                  gap: 6,
+                  gap: 8,
                   flexWrap: "wrap",
                 }}
               >
                 <button
-                  type="button"
-                  onClick={handleExportUsersExcel}
-                  style={exportBtnStyle}
+                  onClick={() => goPage(1)}
+                  disabled={page === 1}
+                  style={paginationButtonStyle(page === 1)}
                 >
-                  Download Excel
+                  First
+                </button>
+                <button
+                  onClick={() => goPage(Math.max(1, page - 1))}
+                  disabled={page === 1}
+                  style={paginationButtonStyle(page === 1)}
+                >
+                  Prev
+                </button>
+                <button
+                  onClick={() =>
+                    goPage(Math.min(Math.ceil(total / limit), page + 1))
+                  }
+                  disabled={page >= Math.ceil(total / limit)}
+                  style={paginationButtonStyle(
+                    page >= Math.ceil(total / limit)
+                  )}
+                >
+                  Next
+                </button>
+                <button
+                  onClick={() => goPage(Math.max(1, Math.ceil(total / limit)))}
+                  disabled={page >= Math.ceil(total / limit)}
+                  style={paginationButtonStyle(
+                    page >= Math.ceil(total / limit)
+                  )}
+                >
+                  Last
                 </button>
               </div>
             </div>
-            {loading ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: 28,
-                  color: "#6b7280",
-                }}
-              >
-                Loading users...
-              </div>
-            ) : users.length === 0 ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: 28,
-                  color: "#6b7280",
-                }}
-              >
-                No users found.
-              </div>
-            ) : isMobile ? (
-              <div style={{ padding: 12 }}>{users.map(renderUserCard)}</div>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                  }}
-                >
-                  <thead style={{ background: "#f9fafb" }}>
-                    <tr>
-                      <th style={thStyle}>Company</th>
-                      <th style={thStyle}>State</th>
-                      <th style={thStyle}>City</th>
-                      <th style={thStyle}>Area</th>
-                      <th style={thStyle}>WhatsApp Phone</th>
-                      <th style={thStyle}>Office No.</th>
-                      <th style={thStyle}>Role</th>
-                      <th style={thStyle}>GSTN</th>
-                      <th style={thStyle}>PAN</th>
-                      <th style={thStyle}>Aadhar</th>
-                      <th style={thStyle}>Bank A/c</th>
-                      <th style={thStyle}>IFSC</th>
-                      <th style={thStyle}>Cancel Cheque</th>
-                      <th style={thStyle}>Email</th>
-                      <th style={thStyle}>About</th>
-                      <th style={thStyle}>Address</th>
-                      <th style={thStyle}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((u, idx) => (
-                      <tr
-                        key={u._id}
-                        style={{
-                          background: idx % 2 === 0 ? "white" : "#f9fafb",
-                        }}
-                      >
-                        <td style={tdStyle}>{u.companyName || "-"}</td>
-                        <td style={tdStyle}>{u.state || "-"}</td>
-                        <td style={tdStyle}>{u.city || "-"}</td>
-                        <td style={tdStyle}>{u.area || "-"}</td>
-                        <td style={tdStyle}>{u.whatsappPhone || "-"}</td>
-                        <td style={tdStyle}>{u.officeNumber || "-"}</td>
-                        <td style={tdStyle}>
-                          <span
-                            style={{
-                              padding: "4px 10px",
-                              borderRadius: 999,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              background: `${getRoleColor(u.role)}20`,
-                              color: getRoleColor(u.role),
-                            }}
-                          >
-                            {u.role}
-                          </span>
-                        </td>
-                        <td style={tdStyle}>{u.gstNumber || "-"}</td>
-                        <td style={tdStyle}>{u.panNumber || "-"}</td>
-                        <td style={tdStyle}>{u.aadharNumber || "-"}</td>
-                        <td style={tdStyle}>{u.bankAccountNumber || "-"}</td>
-                        <td style={tdStyle}>{u.ifscCode || "-"}</td>
-                        <td style={tdStyle}>{u.cancelCheque || "-"}</td>
-                        <td style={tdStyle}>{u.email || "-"}</td>
-                        <td
-                          style={{
-                            ...tdStyle,
-                            maxWidth: 260,
-                            whiteSpace: "normal",
-                            wordBreak: "break-word",
-                          }}
-                        >
-                          {u.aboutInfo || "-"}
-                        </td>
-                        <td
-                          style={{
-                            ...tdStyle,
-                            maxWidth: 260,
-                            whiteSpace: "normal",
-                            wordBreak: "break-word",
-                          }}
-                        >
-                          {u.address || "-"}
-                        </td>
-                        <td style={tdStyle}>
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: 8,
-                              flexWrap: "wrap",
-                            }}
-                          >
-                            <button
-                              onClick={() => openEdit(u)}
-                              style={editBtnStyle}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => openDelete(u)}
-                              style={deleteBtnStyle}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          </>
         )}
 
-        {activeTab && (
-          <div
-            style={{
-              marginTop: 16,
-              display: "flex",
-              flexDirection: isMobile ? "column" : "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 12,
-              background: "white",
-              borderRadius: 12,
-              padding: 12,
-              border: "1px solid #e5e7eb",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 13,
-                color: "#6b7280",
-                textAlign: isMobile ? "center" : "left",
-              }}
-            >
-              Page <span style={{ fontWeight: 700 }}>{page}</span> of{" "}
-              <span style={{ fontWeight: 700 }}>
-                {Math.max(1, Math.ceil(total / limit))}
-              </span>{" "}
-              — <span style={{ fontWeight: 700 }}>{total}</span> total users
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                flexWrap: "wrap",
-              }}
-            >
-              <button
-                onClick={() => goPage(1)}
-                disabled={page === 1}
-                style={paginationButtonStyle(page === 1)}
-              >
-                First
-              </button>
-              <button
-                onClick={() => goPage(Math.max(1, page - 1))}
-                disabled={page === 1}
-                style={paginationButtonStyle(page === 1)}
-              >
-                Prev
-              </button>
-              <button
-                onClick={() =>
-                  goPage(Math.min(Math.ceil(total / limit), page + 1))
-                }
-                disabled={page >= Math.ceil(total / limit)}
-                style={paginationButtonStyle(page >= Math.ceil(total / limit))}
-              >
-                Next
-              </button>
-              <button
-                onClick={() =>
-                  goPage(Math.max(1, Math.ceil(total / limit)))
-                }
-                disabled={page >= Math.ceil(total / limit)}
-                style={paginationButtonStyle(page >= Math.ceil(total / limit))}
-              >
-                Last
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Add User Modal */}
+        {/* Add Partner Modal */}
         {showAddUserModal && (
           <div style={modalBackdrop} role="dialog" aria-modal="true">
             <div style={modalContainer}>
@@ -2377,7 +2727,7 @@ const AdminDashboard = () => {
                     style={inputStyle}
                   />
 
-                  {/* Role */}
+                  {/* Role (partner roles only) */}
                   <select
                     value={newUser.role}
                     onChange={(e) =>
@@ -2395,7 +2745,6 @@ const AdminDashboard = () => {
                     <option value="restaurant">Restaurant</option>
                     <option value="parcel">Parcel</option>
                     <option value="Dry Cleaner">Dry Cleaner</option>
-                    <option value="admin">Admin</option>
                   </select>
 
                   {/* Bank & cheque */}
@@ -2488,7 +2837,7 @@ const AdminDashboard = () => {
                   }}
                 >
                   <button type="submit" style={primaryButtonStyle}>
-                    Create User
+                    Create Partner
                   </button>
                   <button
                     type="button"
@@ -2503,8 +2852,8 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Add Subscription Modal */}
-        {showAddSubscriptionModal && (
+        {/* Add Staff / Role Modal */}
+        {showAddStaffModal && (
           <div style={modalBackdrop} role="dialog" aria-modal="true">
             <div style={modalContainer}>
               <div
@@ -2523,11 +2872,11 @@ const AdminDashboard = () => {
                     color: "#1f2937",
                   }}
                 >
-                  Add Subscription
+                  Add Role / Staff User
                 </h3>
                 <button
-                  aria-label="Close add subscription modal"
-                  onClick={() => setShowAddSubscriptionModal(false)}
+                  aria-label="Close add staff modal"
+                  onClick={() => setShowAddStaffModal(false)}
                   style={{
                     background: "transparent",
                     border: "none",
@@ -2539,126 +2888,90 @@ const AdminDashboard = () => {
                 </button>
               </div>
 
-              <form
-                onSubmit={handleCreateSubscription}
-                style={{ padding: 16 }}
-              >
+              <form onSubmit={handleCreateStaff} style={{ padding: 16 }}>
                 <div
                   style={{
                     display: "grid",
                     gridTemplateColumns: isMobile
                       ? "1fr"
                       : "repeat(auto-fit, minmax(220px, 1fr))",
-                    gap: 10,
+                    gap: 12,
                   }}
                 >
                   <input
-                    value={subscriptionForm.name}
+                    type="text"
+                    value={staffForm.name}
                     onChange={(e) =>
-                      setSubscriptionForm({
-                        ...subscriptionForm,
-                        name: e.target.value,
-                      })
+                      setStaffForm({ ...staffForm, name: e.target.value })
                     }
-                    placeholder="Client Name"
+                    placeholder="Name"
                     required
                     style={inputStyle}
                   />
                   <input
-                    value={subscriptionForm.phone}
+                    type="email"
+                    value={staffForm.email}
                     onChange={(e) =>
-                      setSubscriptionForm({
-                        ...subscriptionForm,
-                        phone: e.target.value,
-                      })
+                      setStaffForm({ ...staffForm, email: e.target.value })
                     }
-                    placeholder="Phone"
+                    placeholder="Email"
+                    style={inputStyle}
+                  />
+                  <input
+                    type="password"
+                    value={staffForm.password}
+                    onChange={(e) =>
+                      setStaffForm({ ...staffForm, password: e.target.value })
+                    }
+                    placeholder="Password"
                     required
                     style={inputStyle}
                   />
                   <input
-                    value={subscriptionForm.email}
+                    type="text"
+                    value={staffForm.phone}
                     onChange={(e) =>
-                      setSubscriptionForm({
-                        ...subscriptionForm,
-                        email: e.target.value,
-                      })
+                      setStaffForm({ ...staffForm, phone: e.target.value })
                     }
-                    placeholder="Email (optional)"
+                    placeholder="Mobile Number"
+                    required
                     style={inputStyle}
                   />
-
+                  <input
+                    type="text"
+                    value={staffForm.aadharNumber}
+                    onChange={(e) =>
+                      setStaffForm({
+                        ...staffForm,
+                        aadharNumber: e.target.value,
+                      })
+                    }
+                    placeholder="Aadhar Number"
+                    style={inputStyle}
+                  />
                   <select
-                    value={subscriptionForm.plan}
+                    value={staffForm.role}
                     onChange={(e) =>
-                      setSubscriptionForm({
-                        ...subscriptionForm,
-                        plan: e.target.value,
-                      })
+                      setStaffForm({ ...staffForm, role: e.target.value })
                     }
+                    required
                     style={inputStyle}
                   >
-                    {subscriptionPlans.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
+                    <option value="admin">Admin</option>
+                    <option value="manager">Manager</option>
+                    <option value="accountant">Accountant</option>
+                    <option value="branch-head">Branch Head</option>
+                    <option value="sales">Sales</option>
                   </select>
 
-                  <select
-                    value={subscriptionForm.durationMonths}
+                  <textarea
+                    value={staffForm.address}
                     onChange={(e) =>
-                      setSubscriptionForm({
-                        ...subscriptionForm,
-                        durationMonths: parseInt(e.target.value, 10),
-                      })
+                      setStaffForm({ ...staffForm, address: e.target.value })
                     }
-                    style={inputStyle}
-                  >
-                    {durationOptions.map((d) => (
-                      <option key={d} value={d}>
-                        {d} months
-                      </option>
-                    ))}
-                  </select>
-
-                  <input
-                    type="date"
-                    value={subscriptionForm.startDate}
-                    onChange={(e) =>
-                      setSubscriptionForm({
-                        ...subscriptionForm,
-                        startDate: e.target.value,
-                      })
-                    }
-                    placeholder="Start Date"
-                    required
-                    style={inputStyle}
-                  />
-
-                  {/* endDate auto */}
-                  <input
-                    type="date"
-                    value={subscriptionForm.endDate || ""}
-                    readOnly
-                    placeholder="End Date (auto)"
+                    placeholder="Address"
                     style={{
-                      ...inputStyle,
-                      background: "#f8fafc",
-                    }}
-                  />
-
-                  <input
-                    value={subscriptionForm.notes}
-                    onChange={(e) =>
-                      setSubscriptionForm({
-                        ...subscriptionForm,
-                        notes: e.target.value,
-                      })
-                    }
-                    placeholder="Notes (optional)"
-                    style={{
-                      ...inputStyle,
+                      ...textAreaStyle,
                       gridColumn: "1 / -1",
                     }}
                   />
@@ -2673,23 +2986,11 @@ const AdminDashboard = () => {
                   }}
                 >
                   <button type="submit" style={primaryButtonStyle}>
-                    Create Subscription
+                    Create Staff User
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setSubscriptionForm({
-                        name: "",
-                        phone: "",
-                        email: "",
-                        plan: "Gold",
-                        durationMonths: 3,
-                        startDate: "",
-                        endDate: "",
-                        notes: "",
-                      });
-                      setShowAddSubscriptionModal(false);
-                    }}
+                    onClick={() => setShowAddStaffModal(false)}
                     style={secondaryButtonStyle}
                   >
                     Cancel
@@ -2757,7 +3058,7 @@ const AdminDashboard = () => {
                         companyName: e.target.value,
                       })
                     }
-                    placeholder="Company Name"
+                    placeholder="Name / Company Name"
                     style={inputStyle}
                   />
                   <select
@@ -2888,6 +3189,13 @@ const AdminDashboard = () => {
                     }
                     style={inputStyle}
                   >
+                    {/* staff roles */}
+                    <option value="admin">Admin</option>
+                    <option value="manager">Manager</option>
+                    <option value="accountant">Accountant</option>
+                    <option value="branch-head">Branch Head</option>
+                    <option value="sales">Sales</option>
+                    {/* partner roles */}
                     <option value="driver">Driver</option>
                     <option value="Bus vendor">Bus Vendor</option>
                     <option value="mechanic">Mechanic</option>
@@ -2895,7 +3203,6 @@ const AdminDashboard = () => {
                     <option value="restaurant">Restaurant</option>
                     <option value="parcel">Parcel</option>
                     <option value="Dry Cleaner">Dry Cleaner</option>
-                    <option value="admin">Admin</option>
                   </select>
                   <input
                     value={editingUser.bankAccountNumber || ""}
@@ -3118,6 +3425,200 @@ const AdminDashboard = () => {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Subscription Modal */}
+        {showAddSubscriptionModal && (
+          <div style={modalBackdrop} role="dialog" aria-modal="true">
+            <div style={modalContainer}>
+              <div
+                style={{
+                  padding: 16,
+                  borderBottom: "1px solid #e5e7eb",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <h3
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: "#1f2937",
+                  }}
+                >
+                  Add Subscription
+                </h3>
+                <button
+                  aria-label="Close add subscription modal"
+                  onClick={() => setShowAddSubscriptionModal(false)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    fontSize: 20,
+                    cursor: "pointer",
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateSubscription} style={{ padding: 16 }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile
+                      ? "1fr"
+                      : "repeat(auto-fit, minmax(220px, 1fr))",
+                    gap: 10,
+                  }}
+                >
+                  <input
+                    value={subscriptionForm.name}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        name: e.target.value,
+                      })
+                    }
+                    placeholder="Client Name"
+                    required
+                    style={inputStyle}
+                  />
+                  <input
+                    value={subscriptionForm.phone}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        phone: e.target.value,
+                      })
+                    }
+                    placeholder="Phone"
+                    required
+                    style={inputStyle}
+                  />
+                  <input
+                    value={subscriptionForm.email}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        email: e.target.value,
+                      })
+                    }
+                    placeholder="Email (optional)"
+                    style={inputStyle}
+                  />
+
+                  <select
+                    value={subscriptionForm.plan}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        plan: e.target.value,
+                      })
+                    }
+                    style={inputStyle}
+                  >
+                    {subscriptionPlans.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={subscriptionForm.durationMonths}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        durationMonths: parseInt(e.target.value, 10),
+                      })
+                    }
+                    style={inputStyle}
+                  >
+                    {durationOptions.map((d) => (
+                      <option key={d} value={d}>
+                        {d} months
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="date"
+                    value={subscriptionForm.startDate}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        startDate: e.target.value,
+                      })
+                    }
+                    placeholder="Start Date"
+                    required
+                    style={inputStyle}
+                  />
+
+                  {/* endDate auto */}
+                  <input
+                    type="date"
+                    value={subscriptionForm.endDate || ""}
+                    readOnly
+                    placeholder="End Date (auto)"
+                    style={{
+                      ...inputStyle,
+                      background: "#f8fafc",
+                    }}
+                  />
+
+                  <input
+                    value={subscriptionForm.notes}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        notes: e.target.value,
+                      })
+                    }
+                    placeholder="Notes (optional)"
+                    style={{
+                      ...inputStyle,
+                      gridColumn: "1 / -1",
+                    }}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: isMobile ? "column" : "row",
+                    gap: 10,
+                    marginTop: 12,
+                  }}
+                >
+                  <button type="submit" style={primaryButtonStyle}>
+                    Create Subscription
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubscriptionForm({
+                        name: "",
+                        phone: "",
+                        email: "",
+                        plan: "Gold",
+                        durationMonths: 3,
+                        startDate: "",
+                        endDate: "",
+                        notes: "",
+                      });
+                      setShowAddSubscriptionModal(false);
+                    }}
+                    style={secondaryButtonStyle}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
