@@ -3,8 +3,21 @@ import React, { useState } from "react";
 import api from "../api/apiClient";
 import { useNavigate } from "react-router-dom";
 
+const ROLE_OPTIONS = [
+  { value: "admin", label: "Admin" },
+  { value: "manager", label: "Manager" },
+  { value: "accountant", label: "Accountant" },
+  { value: "branchHead", label: "Branch Head" },
+  { value: "sales", label: "Sales" },
+];
+
 const AdminLogin = () => {
-  const [form, setForm] = useState({ email: "", password: "" });
+  // ✅ role state add kiya
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+    role: "admin",
+  });
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -23,7 +36,8 @@ const AdminLogin = () => {
     setMsg(null);
 
     try {
-      // yahi API tum abhi use kar rahe the
+      // ⚠️ apiClient ka baseURL probably "/api" hai,
+      // isliye yahan sirf "/auth/admin/login" likha hai
       const res = await api.post("/auth/admin/login", form);
 
       const token = res.data?.token;
@@ -37,13 +51,14 @@ const AdminLogin = () => {
       localStorage.setItem("token", token);
       localStorage.setItem("admin", JSON.stringify(user));
 
+      // real role backend se aaya; isi pe trust karenge
       const role = (user.role || "").toLowerCase();
 
-      // role ke hisaab se redirect map
       const roleRouteMap = {
         admin: "/admin",
         manager: "/manager",
         accountant: "/accountant",
+        branchhead: "/branch-head",
         "branch-head": "/branch-head",
         sales: "/sales",
       };
@@ -300,10 +315,34 @@ const AdminLogin = () => {
           Staff Portal
         </h2>
         <p style={styles.subtitle}>
-          Admin, Manager, Accountant, Branch Head & Sales login
+          Admin, Manager, Accountant, Branch Head &amp; Sales login
         </p>
 
         <form onSubmit={submit} style={styles.form}>
+          {/* Role select */}
+          <label style={styles.label}>
+            Login As
+            <div style={styles.inputWrapper}>
+              <select
+                name="role"
+                value={form.role}
+                onChange={handleChange}
+                onFocus={() => setFocusedField("role")}
+                onBlur={() => setFocusedField(null)}
+                style={{
+                  ...styles.input,
+                  ...(focusedField === "role" ? styles.inputFocus : {}),
+                }}
+              >
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </label>
+
           <label style={styles.label}>
             Email Address
             <div style={styles.inputWrapper}>
