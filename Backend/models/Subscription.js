@@ -6,18 +6,16 @@ const SubscriptionSchema = new mongoose.Schema(
     name: { type: String, required: true },
     phone: { type: String, required: true },
     email: { type: String },
-
     plan: {
       type: String,
       enum: ["Gold", "Silver", "Platinum"],
       default: "Gold",
     },
-
     durationMonths: { type: Number, required: true },
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
 
-    // ✅ pending bhi allow karo
+    // ✅ ab pending bhi allowed
     status: {
       type: String,
       enum: ["pending", "active", "inactive", "expired"],
@@ -26,11 +24,8 @@ const SubscriptionSchema = new mongoose.Schema(
 
     notes: { type: String },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-
-    createdAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
 
 export default mongoose.model("Subscription", SubscriptionSchema);
-
