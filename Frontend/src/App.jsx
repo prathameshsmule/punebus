@@ -8,7 +8,10 @@ import Login from "./pages/Login";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import EnquiryForm from "./pages/EnquiryForm";
-
+import ManagerDashboard from "./pages/ManagerDashboard";
+import AccountantDashboard from "./pages/AccountantDashboard";
+import BranchDashboard from "./pages/BranchDashboard";
+import SalesDashboard from "./pages/SalesDashboard";
 const App = () => (
   <div>
     <Navbar />
@@ -29,6 +32,12 @@ const App = () => (
 
         {/* ✅ Enquiry Form Route */}
         <Route path="/enquiry" element={<EnquiryForm />} />
+        
+        <Route path="/accountant" element={<AccountantDashboard />} />
+        <Route path="/manager" element={<ManagerDashboard />} />
+        
+      <Route path="/branch-head" element={<BranchDashboard />} />
+      <Route path="/sales" element={<SalesDashboard />} />
       </Routes>
     </main>
   </div>
