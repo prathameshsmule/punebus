@@ -49,13 +49,25 @@ router.delete("/user/:id", adminOnly, deleteUser);
 
 /* ========== SUBSCRIPTIONS ========== */
 
-// ✅ admin: subscription create / update / delete
-router.post("/subscription", adminOnly, createSubscriptionByAdmin);
-router.put("/subscription/:id", adminOnly, updateSubscription);
-router.delete("/subscription/:id", adminOnly, deleteSubscription);
+// ✅ admin + sales: subscription create kar sakte
+router.post(
+  "/subscription",
+  (req, res, next) => {
+    const role = req.user?.role;
+    if (role === "admin" || role === "sales") return next();
+    return res
+      .status(403)
+      .json({ message: "Only admin or sales can create subscriptions" });
+  },
+  createSubscriptionByAdmin
+);
 
-// ✅ admin + staff: sirf list / view
+// ✅ admin + staff (manager/accountant/branchHead/sales) list & view
 router.get("/subscriptions", staffOrAdmin, listSubscriptions);
 router.get("/subscription/:id", staffOrAdmin, getSubscriptionById);
+
+// ✅ sirf admin: status update / delete
+router.put("/subscription/:id", adminOnly, updateSubscription);
+router.delete("/subscription/:id", adminOnly, deleteSubscription);
 
 export default router;
