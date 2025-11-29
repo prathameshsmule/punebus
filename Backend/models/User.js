@@ -4,14 +4,14 @@ import mongoose from "mongoose";
 const userSchema = new mongoose.Schema(
   {
     // Legacy fields (old system)
-    name: { type: String },          // old name
-    phone: { type: String },         // old phone / mobile
-    AddharNo: { type: String },      // old aadhar
+    name: { type: String }, // old name
+    phone: { type: String }, // old phone / mobile
+    AddharNo: { type: String }, // old aadhar
     address: { type: String },
     documents: { type: Object },
 
     // New Business Fields (registration v2)
-    companyName: { type: String },   // optional here, controller will validate
+    companyName: { type: String }, // optional here, controller will validate
     state: { type: String },
     city: { type: String },
     area: { type: String },
@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema(
 
     gstNumber: { type: String },
     panNumber: { type: String },
-    aadharNumber: { type: String },  // keep both AddharNo & aadharNumber
+    aadharNumber: { type: String }, // keep both AddharNo & aadharNumber
 
     aboutInfo: { type: String },
 
@@ -34,6 +34,7 @@ const userSchema = new mongoose.Schema(
     password: { type: String },
 
     // Roles
+    // ✅ yahan staff roles add kiye: manager, accountant, branchHead, sales
     role: {
       type: String,
       enum: [
@@ -46,6 +47,10 @@ const userSchema = new mongoose.Schema(
         "parcel",
         "Dry Cleaner",
         "Bus vendor", // keep if already used in DB
+        "manager",
+        "accountant",
+        "branchHead",
+        "sales",
       ],
       required: true,
     },
