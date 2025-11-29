@@ -1,6 +1,7 @@
 // routes/admin.js
 import express from "express";
 import { protect, adminOnly, staffOrAdmin } from "../middleware/auth.js";
+
 import {
   createUserByAdmin,
   listByCategory,
@@ -22,34 +23,37 @@ import {
 
 const router = express.Router();
 
-// Pehle sirf auth check
+// 🔐 sab admin routes pe login required
 router.use(protect);
 
-/* ========== USER MANAGEMENT ========== */
+/* -------------------- USER MANAGEMENT (ADMIN ONLY) -------------------- */
 
-// ✅ sirf admin: naya user/staff create kare
 router.post("/user", adminOnly, createUserByAdmin);
 
-// ✅ admin + staff: users list dekh sakte (driver/vendor/…)
-router.get("/list/:role", staffOrAdmin, listByCategory);
+router.get("/list/:role", adminOnly, listByCategory);
 
-// ✅ sirf admin: internal staff list (manager/accountant/…)
 router.get("/staff", adminOnly, listStaffUsers);
 
-// ✅ admin + staff: mechanics quick list
-router.get("/mechanics", staffOrAdmin, mechanicList);
+router.get("/mechanics", adminOnly, mechanicList);
 
-// ✅ admin + staff: stats dashboard numbers
-router.get("/stats", staffOrAdmin, getStats);
+router.get("/stats", adminOnly, getStats);
 
-// ✅ sirf admin: single user CRUD
 router.get("/user/:id", adminOnly, getUserById);
 router.put("/user/:id", adminOnly, updateUser);
 router.delete("/user/:id", adminOnly, deleteUser);
 
-/* ========== SUBSCRIPTIONS ========== */
+/* -------------------- SUBSCRIPTIONS -------------------- */
+/**
+ *  - Create:
+ *      admin  -> status active (ya jo bheje)
+ *      sales  -> status always "pending"
+ *  - List / detail:
+ *      admin + manager + accountant + branchHead + sales (read-only)
+ *  - Update / delete:
+ *      sirf admin
+ */
 
-// ✅ admin + sales: subscription create kar sakte
+// ✅ create: admin OR sales
 router.post(
   "/subscription",
   (req, res, next) => {
@@ -62,11 +66,11 @@ router.post(
   createSubscriptionByAdmin
 );
 
-// ✅ admin + staff (manager/accountant/branchHead/sales) list & view
+// ✅ list & get: koi bhi internal staff / admin
 router.get("/subscriptions", staffOrAdmin, listSubscriptions);
 router.get("/subscription/:id", staffOrAdmin, getSubscriptionById);
 
-// ✅ sirf admin: status update / delete
+// ✅ update & delete: sirf admin
 router.put("/subscription/:id", adminOnly, updateSubscription);
 router.delete("/subscription/:id", adminOnly, deleteSubscription);
 
