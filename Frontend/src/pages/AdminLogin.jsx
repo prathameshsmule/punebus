@@ -3,21 +3,9 @@ import React, { useState } from "react";
 import api from "../api/apiClient";
 import { useNavigate } from "react-router-dom";
 
-const ROLE_OPTIONS = [
-  { value: "admin", label: "Admin" },
-  { value: "manager", label: "Manager" },
-  { value: "accountant", label: "Accountant" },
-  { value: "branchHead", label: "Branch Head" },
-  { value: "sales", label: "Sales" },
-];
-
 const AdminLogin = () => {
-  // ✅ role state add kiya
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-    role: "admin",
-  });
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [selectedRole, setSelectedRole] = useState("admin"); // ✅ role select
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -36,9 +24,14 @@ const AdminLogin = () => {
     setMsg(null);
 
     try {
-      // ⚠️ apiClient ka baseURL probably "/api" hai,
-      // isliye yahan sirf "/auth/admin/login" likha hai
-      const res = await api.post("/auth/admin/login", form);
+      // ✅ role bhi bhej rahe hai
+      const payload = {
+        email: form.email,
+        password: form.password,
+        role: selectedRole,
+      };
+
+      const res = await api.post("/auth/admin/login", payload);
 
       const token = res.data?.token;
       const user = res.data?.user || {};
@@ -47,11 +40,9 @@ const AdminLogin = () => {
         throw new Error("Invalid response from server");
       }
 
-      // token + staff user info store
       localStorage.setItem("token", token);
       localStorage.setItem("admin", JSON.stringify(user));
 
-      // real role backend se aaya; isi pe trust karenge
       const role = (user.role || "").toLowerCase();
 
       const roleRouteMap = {
@@ -67,7 +58,7 @@ const AdminLogin = () => {
 
       setMsg({
         type: "success",
-        text: `Login successful as ${role || "admin"}! Redirecting...`,
+        text: `Login successful as ${user.role}! Redirecting...`,
       });
 
       setTimeout(() => {
@@ -143,13 +134,13 @@ const AdminLogin = () => {
       textAlign: "center",
       color: "#666",
       fontSize: "14px",
-      marginBottom: "35px",
+      marginBottom: "20px",
       fontWeight: "500",
     },
     form: {
       display: "flex",
       flexDirection: "column",
-      gap: "24px",
+      gap: "18px",
     },
     label: {
       display: "flex",
@@ -191,17 +182,16 @@ const AdminLogin = () => {
       fontSize: "18px",
       pointerEvents: "none",
     },
-    passwordToggle: {
-      position: "absolute",
-      right: "16px",
-      color: "#666",
-      fontSize: "18px",
-      cursor: "pointer",
-      userSelect: "none",
-      transition: "color 0.3s ease",
-    },
-    passwordToggleHover: {
-      color: "#1e3c72",
+    select: {
+      width: "100%",
+      padding: "14px 16px",
+      border: "2px solid #e0e0e0",
+      borderRadius: "12px",
+      fontSize: "15px",
+      backgroundColor: "#f8f9fa",
+      fontWeight: "500",
+      outline: "none",
+      transition: "all 0.3s ease",
     },
     button: {
       padding: "16px",
@@ -290,19 +280,6 @@ const AdminLogin = () => {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.05); }
           }
-          @media (max-width: 600px) {
-            .form-wrapper {
-              padding: 35px 25px !important;
-            }
-            .heading {
-              font-size: 26px !important;
-            }
-            .icon-wrapper {
-              width: 70px !important;
-              height: 70px !important;
-              font-size: 35px !important;
-            }
-          }
         `}
       </style>
 
@@ -315,32 +292,24 @@ const AdminLogin = () => {
           Staff Portal
         </h2>
         <p style={styles.subtitle}>
-          Admin, Manager, Accountant, Branch Head &amp; Sales login
+          Admin, Manager, Accountant, Branch Head & Sales login
         </p>
 
         <form onSubmit={submit} style={styles.form}>
-          {/* Role select */}
+          {/* ROLE SELECT */}
           <label style={styles.label}>
-            Login As
-            <div style={styles.inputWrapper}>
-              <select
-                name="role"
-                value={form.role}
-                onChange={handleChange}
-                onFocus={() => setFocusedField("role")}
-                onBlur={() => setFocusedField(null)}
-                style={{
-                  ...styles.input,
-                  ...(focusedField === "role" ? styles.inputFocus : {}),
-                }}
-              >
-                {ROLE_OPTIONS.map((r) => (
-                  <option key={r.value} value={r.value}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            Login as
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              style={styles.select}
+            >
+              <option value="admin">Admin</option>
+              <option value="manager">Manager</option>
+              <option value="accountant">Accountant</option>
+              <option value="branch-head">Branch Head</option>
+              <option value="sales">Sales</option>
+            </select>
           </label>
 
           <label style={styles.label}>
@@ -385,8 +354,13 @@ const AdminLogin = () => {
               />
               <span
                 style={{
-                  ...styles.passwordToggle,
-                  ...(passwordToggleHover ? styles.passwordToggleHover : {}),
+                  position: "absolute",
+                  right: "16px",
+                  color: passwordToggleHover ? "#1e3c72" : "#666",
+                  fontSize: "18px",
+                  cursor: "pointer",
+                  userSelect: "none",
+                  transition: "color 0.3s ease",
                 }}
                 onClick={() => setShowPassword(!showPassword)}
                 onMouseEnter={() => setPasswordToggleHover(true)}
