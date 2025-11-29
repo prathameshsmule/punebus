@@ -1,6 +1,6 @@
 // routes/admin.js
 import express from "express";
-import { protect, adminOnly } from "../middleware/auth.js";
+import { protect, adminOnly, staffOrAdmin } from "../middleware/auth.js";
 import {
   createUserByAdmin,
   listByCategory,
@@ -9,10 +9,9 @@ import {
   getUserById,
   updateUser,
   deleteUser,
-  listStaffUsers,          // ✅ NEW IMPORT
+  listStaffUsers,
 } from "../controllers/adminController.js";
 
-// NEW: import subscription controllers
 import {
   createSubscriptionByAdmin,
   listSubscriptions,
@@ -23,40 +22,40 @@ import {
 
 const router = express.Router();
 
-router.use(protect, adminOnly);
+// Pehle sirf auth check
+router.use(protect);
 
-// create user (drivers/vendors/staff sab yahin se)
-router.post("/user", createUserByAdmin);
+/* ========== USER MANAGEMENT ========== */
 
-// list by role or all: /api/admin/list/:role  (role = driver/vendor/mechanic/cleaner/admin or 'all')
-router.get("/list/:role", listByCategory);
+// ✅ sirf admin: naya user/staff create kare
+router.post("/user", adminOnly, createUserByAdmin);
 
-// ✅ STAFF LIST: /api/admin/staff
-router.get("/staff", listStaffUsers);
+// ✅ admin + staff: users list dekh sakte (driver/vendor/…)
+router.get("/list/:role", staffOrAdmin, listByCategory);
 
-// mechanics quick list
-router.get("/mechanics", mechanicList);
+// ✅ sirf admin: internal staff list (manager/accountant/…)
+router.get("/staff", adminOnly, listStaffUsers);
 
-// new: stats
-router.get("/stats", getStats);
+// ✅ admin + staff: mechanics quick list
+router.get("/mechanics", staffOrAdmin, mechanicList);
 
-// user CRUD by id
-router.get("/user/:id", getUserById);
-router.put("/user/:id", updateUser);
-router.delete("/user/:id", deleteUser);
+// ✅ admin + staff: stats dashboard numbers
+router.get("/stats", staffOrAdmin, getStats);
 
-/**
- * Subscriptions (admin-only)
- * - POST   /api/admin/subscription        -> create subscription (add client who bought plan)
- * - GET    /api/admin/subscriptions      -> list subscriptions (supports ?page=&limit=&search=&plan=&sort=&order=)
- * - GET    /api/admin/subscription/:id   -> get by id
- * - PUT    /api/admin/subscription/:id   -> update
- * - DELETE /api/admin/subscription/:id   -> delete
- */
-router.post("/subscription", createSubscriptionByAdmin);
-router.get("/subscriptions", listSubscriptions);
-router.get("/subscription/:id", getSubscriptionById);
-router.put("/subscription/:id", updateSubscription);
-router.delete("/subscription/:id", deleteSubscription);
+// ✅ sirf admin: single user CRUD
+router.get("/user/:id", adminOnly, getUserById);
+router.put("/user/:id", adminOnly, updateUser);
+router.delete("/user/:id", adminOnly, deleteUser);
+
+/* ========== SUBSCRIPTIONS ========== */
+
+// ✅ admin: subscription create / update / delete
+router.post("/subscription", adminOnly, createSubscriptionByAdmin);
+router.put("/subscription/:id", adminOnly, updateSubscription);
+router.delete("/subscription/:id", adminOnly, deleteSubscription);
+
+// ✅ admin + staff: sirf list / view
+router.get("/subscriptions", staffOrAdmin, listSubscriptions);
+router.get("/subscription/:id", staffOrAdmin, getSubscriptionById);
 
 export default router;
