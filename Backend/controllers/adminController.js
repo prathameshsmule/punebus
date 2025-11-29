@@ -52,11 +52,10 @@ export const createUserByAdmin = async (req, res) => {
       });
     }
 
-    // ✅ normalize role (branch-head -> branchHead)
-    let finalRole = role;
-    if (finalRole === "branch-head") finalRole = "branchHead";
+    // ✅ normalize branch-head -> branchHead
+    const normalizedRole = role === "branch-head" ? "branchHead" : role;
 
-    // Mongo enum ka respect
+    // Mongo enum ka respect (normalized role pe validation)
     const allowedRoles = [
       "driver",
       "vendor",
@@ -72,8 +71,10 @@ export const createUserByAdmin = async (req, res) => {
       "branchHead",
       "sales",
     ];
-    if (!allowedRoles.includes(finalRole)) {
-      return res.status(400).json({ message: `Invalid role: ${finalRole}` });
+    if (!allowedRoles.includes(normalizedRole)) {
+      return res
+        .status(400)
+        .json({ message: `Invalid role: ${normalizedRole}` });
     }
 
     if (email) {
@@ -113,7 +114,7 @@ export const createUserByAdmin = async (req, res) => {
       cancelCheque,
 
       email: email || undefined,
-      role: finalRole, // ✅ yahan normalized role
+      role: normalizedRole, // ✅ yahan normalized role save hoga
       password: hashed,
     });
 
