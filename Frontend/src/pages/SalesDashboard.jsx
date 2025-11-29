@@ -30,6 +30,9 @@ const SalesDashboard = () => {
   const [statusFilter, setStatusFilter] = useState("all"); // all | pending | active
   const [search, setSearch] = useState("");
 
+  // show/hide history list
+  const [showHistory, setShowHistory] = useState(false);
+
   // read logged-in staff user
   useEffect(() => {
     try {
@@ -70,39 +73,36 @@ const SalesDashboard = () => {
   }, [subscriptionForm.startDate, subscriptionForm.durationMonths]);
 
   // fetch subscriptions created by this sales user
- const fetchSubscriptions = async () => {
-  if (!currentUser) return;
-  setLoading(true);
-  setMsg(null);
-  try {
-    const token = localStorage.getItem("token");
+  const fetchSubscriptions = async () => {
+    if (!currentUser) return;
+    setLoading(true);
+    setMsg(null);
+    try {
+      const token = localStorage.getItem("token");
 
-    // abhi sirf search bhej rahe hain, createdBy nahi
-    const qp = new URLSearchParams({
-      search: search || "",
-    });
+      const qp = new URLSearchParams({
+        search: search || "",
+      });
 
-    const res = await api.get(`/admin/subscriptions?${qp.toString()}`, {
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
+      const res = await api.get(`/admin/subscriptions?${qp.toString()}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
 
-    // jo backend deta hai use hi directly use karo
-    const list = res?.data?.subscriptions || [];
-    setSubscriptions(list);
-  } catch (err) {
-    console.error("fetchSubscriptions error:", err);
-    setMsg({
-      type: "error",
-      text: err?.response?.data?.message || "Failed to load subscriptions",
-    });
-    setSubscriptions([]);
-  } finally {
-    setLoading(false);
-  }
-};
-
+      const list = res?.data?.subscriptions || [];
+      setSubscriptions(list);
+    } catch (err) {
+      console.error("fetchSubscriptions error:", err);
+      setMsg({
+        type: "error",
+        text: err?.response?.data?.message || "Failed to load subscriptions",
+      });
+      setSubscriptions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // initial load (and when currentUser available)
   useEffect(() => {
@@ -181,7 +181,6 @@ const SalesDashboard = () => {
     let okStatus = true;
     if (statusFilter === "pending") okStatus = s.status === "pending";
     if (statusFilter === "active") okStatus = s.status === "active";
-    // (optional) more statuses later
 
     let okSearch = true;
     if (search) {
@@ -518,263 +517,281 @@ const SalesDashboard = () => {
           </form>
         </div>
 
-        {/* History card */}
+        {/* Show/Hide list button */}
         <div
           style={{
-            background: "white",
-            borderRadius: 12,
-            padding: 16,
-            border: "1px solid #e5e7eb",
-            boxShadow: "0 4px 6px rgba(0,0,0,0.04)",
+            marginBottom: 12,
+            textAlign: isMobile ? "left" : "right",
           }}
         >
+          <button
+            type="button"
+            onClick={() => setShowHistory((prev) => !prev)}
+            style={smallButtonStyle}
+          >
+            {showHistory ? "Hide List" : "Show List"}
+          </button>
+        </div>
+
+        {/* History card (only when showHistory = true) */}
+        {showHistory && (
           <div
             style={{
-              display: "flex",
-              flexDirection: isMobile ? "column" : "row",
-              justifyContent: "space-between",
-              alignItems: isMobile ? "flex-start" : "center",
-              gap: 10,
-              marginBottom: 12,
+              background: "white",
+              borderRadius: 12,
+              padding: 16,
+              border: "1px solid #e5e7eb",
+              boxShadow: "0 4px 6px rgba(0,0,0,0.04)",
             }}
           >
-            <div>
-              <h3
-                style={{
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: "#1f2937",
-                  marginBottom: 4,
-                }}
-              >
-                Your Subscriptions History
-              </h3>
-              <p
-                style={{
-                  fontSize: 13,
-                  color: "#6b7280",
-                }}
-              >
-                You can only <strong>view</strong> these records. Activation is
-                done by Admin.
-              </p>
-            </div>
-
             <div
               style={{
                 display: "flex",
-                flexWrap: "wrap",
-                gap: 8,
+                flexDirection: isMobile ? "column" : "row",
+                justifyContent: "space-between",
+                alignItems: isMobile ? "flex-start" : "center",
+                gap: 10,
+                marginBottom: 12,
               }}
             >
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={inputStyle}
-              >
-                <option value="all">All statuses</option>
-                <option value="pending">Pending only</option>
-                <option value="active">Active only</option>
-              </select>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  fetchSubscriptions();
-                }}
-                style={{ display: "flex", gap: 8 }}
-              >
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by name / phone / email"
-                  style={inputStyle}
-                />
-                <button type="submit" style={smallButtonStyle}>
-                  Search
-                </button>
-              </form>
-              <button
-                type="button"
-                onClick={fetchSubscriptions}
-                style={smallButtonStyle}
-              >
-                Refresh
-              </button>
-            </div>
-          </div>
-
-          {loading ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: 24,
-                color: "#6b7280",
-              }}
-            >
-              Loading subscriptions...
-            </div>
-          ) : filteredSubscriptions.length === 0 ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: 24,
-                color: "#6b7280",
-              }}
-            >
-              No subscriptions found.
-            </div>
-          ) : isMobile ? (
-            <div>
-              {filteredSubscriptions.map((s) => (
-                <div
-                  key={s._id}
+              <div>
+                <h3
                   style={{
-                    background: "white",
-                    borderRadius: 12,
-                    padding: 12,
-                    marginBottom: 10,
-                    border: "1px solid #e5e7eb",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: "#1f2937",
+                    marginBottom: 4,
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 8,
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          fontWeight: 800,
-                          color: "#111827",
-                          fontSize: 15,
-                        }}
-                      >
-                        {s.name}
-                      </div>
-                      <div
-                        style={{
-                          marginTop: 4,
-                          fontSize: 13,
-                          color: "#374151",
-                        }}
-                      >
-                        {s.phone}
-                      </div>
-                      {s.email && (
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: "#6b7280",
-                            marginTop: 2,
-                          }}
-                        >
-                          {s.email}
-                        </div>
-                      )}
-                      <div
-                        style={{
-                          marginTop: 6,
-                          fontSize: 13,
-                          color: "#111827",
-                        }}
-                      >
-                        {s.plan} • {s.durationMonths} months
-                      </div>
-                      <div
-                        style={{
-                          marginTop: 4,
-                          fontSize: 12,
-                          color: "#6b7280",
-                        }}
-                      >
-                        {s.startDate
-                          ? new Date(s.startDate).toLocaleDateString()
-                          : "-"}{" "}
-                        →{" "}
-                        {s.endDate
-                          ? new Date(s.endDate).toLocaleDateString()
-                          : "-"}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <span style={statusBadgeStyle(s.status || "pending")}>
-                        {s.status || "pending"}
-                      </span>
-                      <div
-                        style={{
-                          marginTop: 8,
-                          fontSize: 11,
-                          color: "#9ca3af",
-                        }}
-                      >
-                        ID: {s._id?.slice(-6)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table
+                  Your Subscriptions History
+                </h3>
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: "#6b7280",
+                  }}
+                >
+                  You can only <strong>view</strong> these records. Activation
+                  is done by Admin.
+                </p>
+              </div>
+
+              <div
                 style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
                 }}
               >
-                <thead style={{ background: "#f9fafb" }}>
-                  <tr>
-                    <th style={thStyle}>Name</th>
-                    <th style={thStyle}>Phone</th>
-                    <th style={thStyle}>Email</th>
-                    <th style={thStyle}>Plan</th>
-                    <th style={thStyle}>Duration</th>
-                    <th style={thStyle}>Start</th>
-                    <th style={thStyle}>End</th>
-                    <th style={thStyle}>Status</th>
-                    <th style={thStyle}>Notes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredSubscriptions.map((s, idx) => (
-                    <tr
-                      key={s._id}
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  style={inputStyle}
+                >
+                  <option value="all">All statuses</option>
+                  <option value="pending">Pending only</option>
+                  <option value="active">Active only</option>
+                </select>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    fetchSubscriptions();
+                  }}
+                  style={{ display: "flex", gap: 8 }}
+                >
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search by name / phone / email"
+                    style={inputStyle}
+                  />
+                  <button type="submit" style={smallButtonStyle}>
+                    Search
+                  </button>
+                </form>
+                <button
+                  type="button"
+                  onClick={fetchSubscriptions}
+                  style={smallButtonStyle}
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            {loading ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: 24,
+                  color: "#6b7280",
+                }}
+              >
+                Loading subscriptions...
+              </div>
+            ) : filteredSubscriptions.length === 0 ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: 24,
+                  color: "#6b7280",
+                }}
+              >
+                No subscriptions found.
+              </div>
+            ) : isMobile ? (
+              <div>
+                {filteredSubscriptions.map((s) => (
+                  <div
+                    key={s._id}
+                    style={{
+                      background: "white",
+                      borderRadius: 12,
+                      padding: 12,
+                      marginBottom: 10,
+                      border: "1px solid #e5e7eb",
+                    }}
+                  >
+                    <div
                       style={{
-                        background: idx % 2 === 0 ? "white" : "#f9fafb",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 8,
                       }}
                     >
-                      <td style={tdStyle}>{s.name}</td>
-                      <td style={tdStyle}>{s.phone}</td>
-                      <td style={tdStyle}>{s.email || "-"}</td>
-                      <td style={tdStyle}>{s.plan}</td>
-                      <td style={tdStyle}>{s.durationMonths} months</td>
-                      <td style={tdStyle}>
-                        {s.startDate
-                          ? new Date(s.startDate).toLocaleDateString()
-                          : "-"}
-                      </td>
-                      <td style={tdStyle}>
-                        {s.endDate
-                          ? new Date(s.endDate).toLocaleDateString()
-                          : "-"}
-                      </td>
-                      <td style={tdStyle}>
+                      <div>
+                        <div
+                          style={{
+                            fontWeight: 800,
+                            color: "#111827",
+                            fontSize: 15,
+                          }}
+                        >
+                          {s.name}
+                        </div>
+                        <div
+                          style={{
+                            marginTop: 4,
+                            fontSize: 13,
+                            color: "#374151",
+                          }}
+                        >
+                          {s.phone}
+                        </div>
+                        {s.email && (
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: "#6b7280",
+                              marginTop: 2,
+                            }}
+                          >
+                            {s.email}
+                          </div>
+                        )}
+                        <div
+                          style={{
+                            marginTop: 6,
+                            fontSize: 13,
+                            color: "#111827",
+                          }}
+                        >
+                          {s.plan} • {s.durationMonths} months
+                        </div>
+                        <div
+                          style={{
+                            marginTop: 4,
+                            fontSize: 12,
+                            color: "#6b7280",
+                          }}
+                        >
+                          {s.startDate
+                            ? new Date(s.startDate).toLocaleDateString()
+                            : "-"}{" "}
+                          →{" "}
+                          {s.endDate
+                            ? new Date(s.endDate).toLocaleDateString()
+                            : "-"}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
                         <span style={statusBadgeStyle(s.status || "pending")}>
                           {s.status || "pending"}
                         </span>
-                      </td>
-                      <td style={{ ...tdStyle, maxWidth: 240 }}>
-                        {s.notes || "-"}
-                      </td>
+                        <div
+                          style={{
+                            marginTop: 8,
+                            fontSize: 11,
+                            color: "#9ca3af",
+                          }}
+                        >
+                          ID: {s._id?.slice(-6)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                  }}
+                >
+                  <thead style={{ background: "#f9fafb" }}>
+                    <tr>
+                      <th style={thStyle}>Name</th>
+                      <th style={thStyle}>Phone</th>
+                      <th style={thStyle}>Email</th>
+                      <th style={thStyle}>Plan</th>
+                      <th style={thStyle}>Duration</th>
+                      <th style={thStyle}>Start</th>
+                      <th style={thStyle}>End</th>
+                      <th style={thStyle}>Status</th>
+                      <th style={thStyle}>Notes</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                  </thead>
+                  <tbody>
+                    {filteredSubscriptions.map((s, idx) => (
+                      <tr
+                        key={s._id}
+                        style={{
+                          background: idx % 2 === 0 ? "white" : "#f9fafb",
+                        }}
+                      >
+                        <td style={tdStyle}>{s.name}</td>
+                        <td style={tdStyle}>{s.phone}</td>
+                        <td style={tdStyle}>{s.email || "-"}</td>
+                        <td style={tdStyle}>{s.plan}</td>
+                        <td style={tdStyle}>{s.durationMonths} months</td>
+                        <td style={tdStyle}>
+                          {s.startDate
+                            ? new Date(s.startDate).toLocaleDateString()
+                            : "-"}
+                        </td>
+                        <td style={tdStyle}>
+                          {s.endDate
+                            ? new Date(s.endDate).toLocaleDateString()
+                            : "-"}
+                        </td>
+                        <td style={tdStyle}>
+                          <span style={statusBadgeStyle(s.status || "pending")}>
+                            {s.status || "pending"}
+                          </span>
+                        </td>
+                        <td style={{ ...tdStyle, maxWidth: 240 }}>
+                          {s.notes || "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -837,4 +854,3 @@ const smallButtonStyle = {
 };
 
 export default SalesDashboard;
-
