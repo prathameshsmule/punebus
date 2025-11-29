@@ -13,10 +13,9 @@ const signToken = (userId) => {
 // STAFF roles list (sirf admin create karega)
 const STAFF_ROLES = ["manager", "accountant", "branchHead", "sales"];
 
-// =====================================================
-// PUBLIC REGISTRATION (NEW FORMAT)
-// =====================================================
-
+// =========================
+// PUBLIC REGISTRATION SAME
+// =========================
 export const registerUser = async (req, res) => {
   try {
     const {
@@ -39,14 +38,13 @@ export const registerUser = async (req, res) => {
       password,
     } = req.body;
 
-    // Validate required fields
     if (!companyName || !whatsappPhone || !role) {
       return res.status(400).json({
         message: "Company name, WhatsApp phone and role are required",
       });
     }
 
-    // ❌ Public route se admin ya staff roles register NHI honge
+    // ❌ Public se admin/staff register nahi hone dena
     if (role === "admin" || STAFF_ROLES.includes(role)) {
       return res.status(403).json({
         message:
@@ -54,13 +52,11 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // Hash password if provided
     let hashedPassword = undefined;
     if (password) {
       hashedPassword = await bcrypt.hash(password, 10);
     }
 
-    // Create user
     const user = await User.create({
       companyName,
       address,
@@ -99,55 +95,49 @@ export const registerUser = async (req, res) => {
   }
 };
 
-// =====================================================
-// ADMIN + STAFF LOGIN (admin, manager, accountant, branchHead, sales)
-// Body: { email, password, role }
-// =====================================================
+// ================================
+// ✅ MULTI ROLE STAFF LOGIN
+// ================================
 export const adminLogin = async (req, res) => {
-  try {
-    const { email, password, role } = req.body;
+  const { email, password, role } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password required" });
-    }
-
-    // body se aaya role; default admin
-    const requestedRole = (role || "admin").trim();
-
-    const ALLOWED_ROLES = ["admin", ...STAFF_ROLES];
-
-    // koi aur role se login ki koshish kare to block
-    if (!ALLOWED_ROLES.includes(requestedRole)) {
-      return res.status(403).json({ message: "Invalid role for staff login" });
-    }
-
-    // ab email + role dono match hone chahiye
-    const user = await User.findOne({ email, role: requestedRole });
-
-    if (!user || !user.password) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    const token = signToken(user._id);
-
-    return res.json({
-      token,
-      user: {
-        id: user._id,
-        name: user.name || user.companyName || "",
-        email: user.email,
-        role: user.role, // yahi real role hai jisse frontend redirect karega
-      },
-    });
-  } catch (err) {
-    console.error("[adminLogin] error:", err);
+  if (!email || !password || !role) {
     return res
-      .status(500)
-      .json({ message: "Server error", error: err.message });
+      .status(400)
+      .json({ message: "Email, password and role are required" });
   }
+
+  // Frontend se branch-head aa raha ho to normalize
+  let normalizedRole = role;
+  if (normalizedRole === "branch-head") normalizedRole = "branchHead";
+
+  const allowedRoles = ["admin", "manager", "accountant", "branchHead", "sales"];
+
+  if (!allowedRoles.includes(normalizedRole)) {
+    return res.status(403).json({ message: "Invalid role selection" });
+  }
+
+  // Ab specific role ke saath user dhoondho
+  const user = await User.findOne({ email, role: normalizedRole });
+
+  if (!user) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
+
+  const isMatch = await bcrypt.compare(password, user.password || "");
+  if (!isMatch) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
+
+  const token = signToken(user._id);
+
+  return res.json({
+    token,
+    user: {
+      id: user._id,
+      name: user.name || user.companyName || "",
+      email: user.email,
+      role: user.role, // yahi baad me front pe use ho raha hai
+    },
+  });
 };
