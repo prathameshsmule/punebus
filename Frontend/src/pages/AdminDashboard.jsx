@@ -396,6 +396,37 @@ const AdminDashboard = () => {
     }
   };
 
+  // ⭐ NEW: update subscription status (pending / active / inactive / expired)
+  const handleUpdateSubscriptionStatus = async (id, newStatus) => {
+    const allowed = ["pending", "active", "inactive", "expired"];
+    if (!allowed.includes(newStatus)) {
+      alert("Invalid status");
+      return;
+    }
+
+    const prevStatus =
+      subscriptions.find((s) => s._id === id)?.status || "pending";
+
+    // optimistic UI update
+    setSubscriptions((prev) =>
+      prev.map((s) => (s._id === id ? { ...s, status: newStatus } : s))
+    );
+
+    try {
+      await api.put(`/admin/subscription/${id}`, { status: newStatus });
+      fetchStats();
+    } catch (err) {
+      console.error("update subscription status err:", err);
+      alert(
+        err?.response?.data?.message || "Failed to update subscription status"
+      );
+      // rollback on error
+      setSubscriptions((prev) =>
+        prev.map((s) => (s._id === id ? { ...s, status: prevStatus } : s))
+      );
+    }
+  };
+
   // delete subscription
   const handleDeleteSubscription = async (id) => {
     if (!window.confirm("Delete this subscription?")) return;
@@ -521,7 +552,6 @@ const AdminDashboard = () => {
     }
     try {
       const payload = {
-        // backend ke hisaab se adjust kar sakte ho
         companyName: name,
         name,
         email,
@@ -987,9 +1017,7 @@ const AdminDashboard = () => {
           <div>
             <select
               value={eq.status || "pending"}
-              onChange={(e) =>
-                handleChangeEnquiryStatus(eq._id, e.target.value)
-              }
+              onChange={(e) => handleChangeEnquiryStatus(eq._id, e.target.value)}
               style={{
                 padding: "8px 10px",
                 borderRadius: 8,
@@ -1544,10 +1572,7 @@ const AdminDashboard = () => {
                 {showEnquiries ? "Hide Enquiries" : "Enquiries"}
               </button>
 
-              <button
-                onClick={toggleSubscriptions}
-                style={subscriptionBtnStyle}
-              >
+              <button onClick={toggleSubscriptions} style={subscriptionBtnStyle}>
                 {showSubscriptionsPanel
                   ? "Hide Subscriptions"
                   : "Subscriptions"}
@@ -1721,6 +1746,7 @@ const AdminDashboard = () => {
                         ? new Date(s.endDate).toLocaleDateString()
                         : "-"}
                     </div>
+                    {/* ⭐ UPDATED: mobile status dropdown */}
                     <div
                       style={{
                         marginTop: 6,
@@ -1728,7 +1754,28 @@ const AdminDashboard = () => {
                         color: "#6b7280",
                       }}
                     >
-                      Status: {s.status}
+                      Status:{" "}
+                      <select
+                        value={s.status || "pending"}
+                        onChange={(e) =>
+                          handleUpdateSubscriptionStatus(
+                            s._id,
+                            e.target.value
+                          )
+                        }
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: 8,
+                          border: "1px solid #d1d5db",
+                          fontSize: 12,
+                          fontWeight: 600,
+                        }}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="expired">Expired</option>
+                      </select>
                     </div>
                     <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                       <button
@@ -1791,7 +1838,30 @@ const AdminDashboard = () => {
                             ? new Date(s.endDate).toLocaleDateString()
                             : "-"}
                         </td>
-                        <td style={tdStyle}>{s.status}</td>
+                        {/* ⭐ UPDATED: desktop status dropdown */}
+                        <td style={tdStyle}>
+                          <select
+                            value={s.status || "pending"}
+                            onChange={(e) =>
+                              handleUpdateSubscriptionStatus(
+                                s._id,
+                                e.target.value
+                              )
+                            }
+                            style={{
+                              padding: "6px 8px",
+                              borderRadius: 8,
+                              border: "1px solid #d1d5db",
+                              fontSize: 13,
+                              fontWeight: 600,
+                            }}
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="expired">Expired</option>
+                          </select>
+                        </td>
                         <td style={tdStyle}>
                           <div
                             style={{
@@ -1809,7 +1879,9 @@ const AdminDashboard = () => {
                               Copy ID
                             </button>
                             <button
-                              onClick={() => handleDeleteSubscription(s._id)}
+                              onClick={() =>
+                                handleDeleteSubscription(s._id)
+                              }
                               style={deleteBtnStyle}
                             >
                               Delete
@@ -1860,7 +1932,10 @@ const AdminDashboard = () => {
                     <button
                       onClick={() =>
                         goSubPage(
-                          Math.min(Math.ceil(subTotal / subLimit), subPage + 1)
+                          Math.min(
+                            Math.ceil(subTotal / subLimit),
+                            subPage + 1
+                          )
                         )
                       }
                       disabled={subPage >= Math.ceil(subTotal / subLimit)}
@@ -1872,7 +1947,9 @@ const AdminDashboard = () => {
                     </button>
                     <button
                       onClick={() =>
-                        goSubPage(Math.max(1, Math.ceil(subTotal / subLimit)))
+                        goSubPage(
+                          Math.max(1, Math.ceil(subTotal / subLimit))
+                        )
                       }
                       disabled={subPage >= Math.ceil(subTotal / subLimit)}
                       style={paginationButtonStyle(
