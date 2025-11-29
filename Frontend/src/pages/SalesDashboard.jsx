@@ -70,49 +70,39 @@ const SalesDashboard = () => {
   }, [subscriptionForm.startDate, subscriptionForm.durationMonths]);
 
   // fetch subscriptions created by this sales user
-  const fetchSubscriptions = async () => {
-    if (!currentUser) return;
-    setLoading(true);
-    setMsg(null);
-    try {
-      const token = localStorage.getItem("token");
+ const fetchSubscriptions = async () => {
+  if (!currentUser) return;
+  setLoading(true);
+  setMsg(null);
+  try {
+    const token = localStorage.getItem("token");
 
-      // optional: backend can use createdBy to filter
-      const qp = new URLSearchParams({
-        search: search || "",
-        createdBy: currentUser._id || "",
-      });
+    // abhi sirf search bhej rahe hain, createdBy nahi
+    const qp = new URLSearchParams({
+      search: search || "",
+    });
 
-      const res = await api.get(`/admin/subscriptions?${qp.toString()}`, {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
+    const res = await api.get(`/admin/subscriptions?${qp.toString()}`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
 
-      let list = res?.data?.subscriptions || [];
+    // jo backend deta hai use hi directly use karo
+    const list = res?.data?.subscriptions || [];
+    setSubscriptions(list);
+  } catch (err) {
+    console.error("fetchSubscriptions error:", err);
+    setMsg({
+      type: "error",
+      text: err?.response?.data?.message || "Failed to load subscriptions",
+    });
+    setSubscriptions([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
-      // extra frontend safety: keep only records created by this sales user
-      if (currentUser?.email) {
-        list = list.filter(
-          (s) =>
-            s.createdBy === currentUser._id ||
-            s.createdByEmail === currentUser.email ||
-            !s.createdBy // if backend not yet storing, show all
-        );
-      }
-
-      setSubscriptions(list);
-    } catch (err) {
-      console.error("fetchSubscriptions error:", err);
-      setMsg({
-        type: "error",
-        text: err?.response?.data?.message || "Failed to load subscriptions",
-      });
-      setSubscriptions([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // initial load (and when currentUser available)
   useEffect(() => {
@@ -847,3 +837,4 @@ const smallButtonStyle = {
 };
 
 export default SalesDashboard;
+
