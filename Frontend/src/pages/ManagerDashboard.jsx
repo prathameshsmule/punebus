@@ -41,6 +41,20 @@ const ManagerDashboard = () => {
   const [subTotal, setSubTotal] = useState(0);
   const [subSearch, setSubSearch] = useState("");
 
+  // Manager can create subscription
+  const [showAddSubscriptionModal, setShowAddSubscriptionModal] =
+    useState(false);
+  const [subscriptionForm, setSubscriptionForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    plan: "Gold",
+    durationMonths: 3,
+    startDate: "",
+    endDate: "",
+    notes: "",
+  });
+
   // responsive
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth <= 768 : false
@@ -140,7 +154,7 @@ const ManagerDashboard = () => {
     }
   };
 
-  // Subscriptions list (view only)
+  // Subscriptions list
   const fetchSubscriptions = async (
     pageParam = subPage,
     searchParam = subSearch
@@ -166,6 +180,111 @@ const ManagerDashboard = () => {
       setSubTotal(0);
     } finally {
       setLoadingSubscriptions(false);
+    }
+  };
+
+  // helper - end date (months add)
+  const computeEndDate = (startDateStr, months) => {
+    if (!startDateStr || !months) return "";
+    try {
+      const sd = new Date(`${startDateStr}T00:00:00`);
+      sd.setMonth(sd.getMonth() + parseInt(months, 10));
+      const yyyy = sd.getFullYear();
+      const mm = String(sd.getMonth() + 1).padStart(2, "0");
+      const dd = String(sd.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    } catch (e) {
+      return "";
+    }
+  };
+
+  // startDate / duration change → endDate auto
+  useEffect(() => {
+    const { startDate, durationMonths } = subscriptionForm;
+    if (startDate && durationMonths) {
+      const ed = computeEndDate(startDate, durationMonths);
+      setSubscriptionForm((prev) => ({ ...prev, endDate: ed }));
+    } else {
+      setSubscriptionForm((prev) => ({ ...prev, endDate: "" }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscriptionForm.startDate, subscriptionForm.durationMonths]);
+
+  // MANAGER: create subscription (status default pending)
+  const handleCreateSubscription = async (e) => {
+    e.preventDefault();
+    const { name, phone, durationMonths, startDate } = subscriptionForm;
+    if (!name || !phone || !durationMonths || !startDate) {
+      alert("Name, phone, duration aur start date required hai");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      const payload = {
+        ...subscriptionForm,
+        durationMonths: parseInt(subscriptionForm.durationMonths, 10),
+        status: "pending", // manager se create hote hi pending
+        createdByRole: "manager",
+      };
+      const res = await api.post("/admin/subscription", payload, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      alert(res?.data?.message || "Subscription created (pending)");
+      setSubscriptionForm({
+        name: "",
+        phone: "",
+        email: "",
+        plan: "Gold",
+        durationMonths: 3,
+        startDate: "",
+        endDate: "",
+        notes: "",
+      });
+      setShowAddSubscriptionModal(false);
+      // list refresh
+      fetchSubscriptions(1, "");
+    } catch (err) {
+      console.error("manager create subscription err:", err);
+      alert(
+        err?.response?.data?.message ||
+          "Manager se subscription create nahi hua, please check backend"
+      );
+    }
+  };
+
+  // MANAGER: change subscription status (pending / active / expired)
+  const handleChangeSubscriptionStatus = async (id, newStatus) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.put(
+        `/admin/subscription/${id}`,
+        { status: newStatus },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        }
+      );
+
+      // local state update
+      setSubscriptions((prev) =>
+        prev.map((s) => (s._id === id ? { ...s, status: newStatus } : s))
+      );
+
+      if (res?.data?.message) {
+        console.log("status updated:", res.data.message);
+      }
+    } catch (err) {
+      console.error("manager status change err:", err);
+      alert(
+        err?.response?.data?.message ||
+          "Status update fail hua, please check backend permissions"
+      );
     }
   };
 
@@ -386,7 +505,7 @@ const ManagerDashboard = () => {
   };
 
   // ----------------------------
-  // Cards render helpers (view only)
+  // Cards render helpers
   // ----------------------------
 
   const renderEnquiryCard = (eq) => (
@@ -685,12 +804,29 @@ const ManagerDashboard = () => {
           color: "#6b7280",
         }}
       >
-        Status: {s.status}
+        Status:{" "}
+        <select
+          value={s.status || "pending"}
+          onChange={(e) =>
+            handleChangeSubscriptionStatus(s._id, e.target.value)
+          }
+          style={{
+            padding: "4px 8px",
+            borderRadius: 8,
+            border: "1px solid #d1d5db",
+            fontSize: 12,
+            fontWeight: 700,
+          }}
+        >
+          <option value="pending">pending</option>
+          <option value="active">active</option>
+          <option value="expired">expired</option>
+        </select>
       </div>
     </div>
   );
 
-  // --- SEARCH / CONTROL STYLES (same as admin, minus add buttons) ---
+  // --- SEARCH / CONTROL STYLES ---
   const searchInputStyle = {
     ...inputStyle,
     minWidth: isMobile ? 0 : 220,
@@ -765,7 +901,8 @@ const ManagerDashboard = () => {
               fontSize: isMobile ? 13 : 14,
             }}
           >
-            View users, enquiries and subscriptions (read-only access)
+            View users & enquiries, and manage subscriptions (add & update
+            status).
           </p>
         </div>
 
@@ -936,7 +1073,7 @@ const ManagerDashboard = () => {
           </div>
         </div>
 
-        {/* Subscriptions Panel (view only) */}
+        {/* Subscriptions Panel */}
         {showSubscriptionsPanel && (
           <div
             style={{
@@ -1001,6 +1138,13 @@ const ManagerDashboard = () => {
                     style={exportBtnStyle}
                   >
                     Download Excel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddSubscriptionModal(true)}
+                    style={primaryButtonStyle}
+                  >
+                    + Add Subscription
                   </button>
                 </div>
               </div>
@@ -1071,7 +1215,27 @@ const ManagerDashboard = () => {
                             ? new Date(s.endDate).toLocaleDateString()
                             : "-"}
                         </td>
-                        <td style={tdStyle}>{s.status}</td>
+                        <td style={tdStyle}>
+                          <select
+                            value={s.status || "pending"}
+                            onChange={(e) =>
+                              handleChangeSubscriptionStatus(
+                                s._id,
+                                e.target.value
+                              )
+                            }
+                            style={{
+                              padding: "6px 8px",
+                              borderRadius: 8,
+                              border: "1px solid #d1d5db",
+                              fontWeight: 700,
+                            }}
+                          >
+                            <option value="pending">pending</option>
+                            <option value="active">active</option>
+                            <option value="expired">expired</option>
+                          </select>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1143,6 +1307,175 @@ const ManagerDashboard = () => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Add Subscription Modal (Manager) */}
+        {showAddSubscriptionModal && (
+          <div style={modalBackdrop} role="dialog" aria-modal="true">
+            <div style={modalContainer}>
+              <div
+                style={{
+                  padding: 16,
+                  borderBottom: "1px solid #e5e7eb",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <h3
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: "#1f2937",
+                  }}
+                >
+                  Add Subscription (Manager)
+                </h3>
+                <button
+                  aria-label="Close add subscription modal"
+                  onClick={() => setShowAddSubscriptionModal(false)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    fontSize: 20,
+                    cursor: "pointer",
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateSubscription} style={{ padding: 16 }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile
+                      ? "1fr"
+                      : "repeat(auto-fit, minmax(220px, 1fr))",
+                    gap: 10,
+                  }}
+                >
+                  <input
+                    value={subscriptionForm.name}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        name: e.target.value,
+                      })
+                    }
+                    placeholder="Client Name"
+                    required
+                    style={inputStyle}
+                  />
+                  <input
+                    value={subscriptionForm.phone}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        phone: e.target.value,
+                      })
+                    }
+                    placeholder="Phone"
+                    required
+                    style={inputStyle}
+                  />
+                  <input
+                    value={subscriptionForm.email}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        email: e.target.value,
+                      })
+                    }
+                    placeholder="Email (optional)"
+                    style={inputStyle}
+                  />
+                  <select
+                    value={subscriptionForm.plan}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        plan: e.target.value,
+                      })
+                    }
+                    style={inputStyle}
+                  >
+                    {["Gold", "Silver", "Platinum"].map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={subscriptionForm.durationMonths}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        durationMonths: parseInt(e.target.value, 10),
+                      })
+                    }
+                    style={inputStyle}
+                  >
+                    {[3, 6, 12].map((d) => (
+                      <option key={d} value={d}>
+                        {d} months
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="date"
+                    value={subscriptionForm.startDate}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        startDate: e.target.value,
+                      })
+                    }
+                    required
+                    style={inputStyle}
+                  />
+                  <input
+                    type="date"
+                    value={subscriptionForm.endDate || ""}
+                    readOnly
+                    style={{ ...inputStyle, background: "#f8fafc" }}
+                    placeholder="End date (auto)"
+                  />
+                  <input
+                    value={subscriptionForm.notes}
+                    onChange={(e) =>
+                      setSubscriptionForm({
+                        ...subscriptionForm,
+                        notes: e.target.value,
+                      })
+                    }
+                    placeholder="Notes (optional)"
+                    style={{ ...inputStyle, gridColumn: "1 / -1" }}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: isMobile ? "column" : "row",
+                    gap: 10,
+                    marginTop: 12,
+                  }}
+                >
+                  <button type="submit" style={primaryButtonStyle}>
+                    Create Subscription
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddSubscriptionModal(false)}
+                    style={secondaryButtonStyle}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 
@@ -1595,6 +1928,49 @@ const exportBtnStyle = {
   cursor: "pointer",
   fontSize: 13,
   fontWeight: 700,
+};
+
+const primaryButtonStyle = {
+  padding: "8px 12px",
+  background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+  color: "white",
+  border: "none",
+  borderRadius: 10,
+  cursor: "pointer",
+  fontSize: 13,
+  fontWeight: 800,
+};
+
+const secondaryButtonStyle = {
+  padding: "8px 12px",
+  background: "#e5e7eb",
+  color: "#374151",
+  border: "none",
+  borderRadius: 10,
+  cursor: "pointer",
+  fontSize: 13,
+  fontWeight: 700,
+};
+
+const modalBackdrop = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(15,23,42,0.45)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 50,
+  padding: 12,
+};
+
+const modalContainer = {
+  background: "white",
+  borderRadius: 16,
+  maxWidth: 720,
+  width: "100%",
+  maxHeight: "90vh",
+  overflowY: "auto",
+  boxShadow: "0 20px 40px rgba(0,0,0,0.18)",
 };
 
 export default ManagerDashboard;
