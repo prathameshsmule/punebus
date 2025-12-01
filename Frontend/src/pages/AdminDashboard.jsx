@@ -2426,26 +2426,32 @@ const AdminDashboard = () => {
                     }}
                   >
                     <thead style={{ background: "#f9fafb" }}>
-                      <tr>
-                        <th style={thStyle}>Company</th>
-                        <th style={thStyle}>State</th>
-                        <th style={thStyle}>City</th>
-                        <th style={thStyle}>Area</th>
-                        <th style={thStyle}>WhatsApp Phone</th>
-                        <th style={thStyle}>Office No.</th>
-                        <th style={thStyle}>Role</th>
-                        <th style={thStyle}>GSTN</th>
-                        <th style={thStyle}>PAN</th>
-                        <th style={thStyle}>Aadhar</th>
-                        <th style={thStyle}>Bank A/c</th>
-                        <th style={thStyle}>IFSC</th>
-                        <th style={thStyle}>Cancel Cheque</th>
-                        <th style={thStyle}>Email</th>
-                        <th style={thStyle}>About</th>
-                        <th style={thStyle}>Address</th>
-                        <th style={thStyle}>Actions</th>
-                      </tr>
-                    </thead>
+  <tr>
+    <th style={thStyle}>Company</th>
+    <th style={thStyle}>State</th>
+    <th style={thStyle}>City</th>
+    <th style={thStyle}>Area</th>
+    <th style={thStyle}>WhatsApp Phone</th>
+    <th style={thStyle}>Office No.</th>
+    <th style={thStyle}>Role</th>
+    <th style={thStyle}>GSTN</th>
+    <th style={thStyle}>PAN</th>
+    <th style={thStyle}>Aadhar</th>
+    <th style={thStyle}>Bank A/c</th>
+    <th style={thStyle}>IFSC</th>
+    <th style={thStyle}>Cancel Cheque</th>
+    <th style={thStyle}>Email</th>
+    <th style={thStyle}>About</th>
+    <th style={thStyle}>Address</th>
+
+    {/* ⭐ NEW PDF COLUMNS */}
+    <th style={thStyle}>Aadhar PDF</th>
+    <th style={thStyle}>Bank PDF</th>
+    <th style={thStyle}>Certificate PDF</th>
+
+    <th style={thStyle}>Actions</th>
+  </tr>
+</thead>
                     <tbody>
                       {users.map((u, idx) => (
                         <tr
@@ -2481,48 +2487,83 @@ const AdminDashboard = () => {
                           <td style={tdStyle}>{u.ifscCode || "-"}</td>
                           <td style={tdStyle}>{u.cancelCheque || "-"}</td>
                           <td style={tdStyle}>{u.email || "-"}</td>
-                          <td
-                            style={{
-                              ...tdStyle,
-                              maxWidth: 260,
-                              whiteSpace: "normal",
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            {u.aboutInfo || "-"}
-                          </td>
-                          <td
-                            style={{
-                              ...tdStyle,
-                              maxWidth: 260,
-                              whiteSpace: "normal",
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            {u.address || "-"}
-                          </td>
-                          <td style={tdStyle}>
-                            <div
-                              style={{
-                                display: "flex",
-                                gap: 8,
-                                flexWrap: "wrap",
-                              }}
-                            >
-                              <button
-                                onClick={() => openEdit(u)}
-                                style={editBtnStyle}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => openDelete(u)}
-                                style={deleteBtnStyle}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
+                         <td
+  style={{
+    ...tdStyle,
+    maxWidth: 260,
+    whiteSpace: "normal",
+    wordBreak: "break-word",
+  }}
+>
+  {u.address || "-"}
+</td>
+
+{/* ⭐ NEW: PDF LINKS */}
+<td style={tdStyle}>
+  {u.aadharPdfUrl ? (
+    <a
+      href={u.aadharPdfUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ textDecoration: "underline" }}
+    >
+      View
+    </a>
+  ) : (
+    "-"
+  )}
+</td>
+<td style={tdStyle}>
+  {u.bankPdfUrl ? (
+    <a
+      href={u.bankPdfUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ textDecoration: "underline" }}
+    >
+      View
+    </a>
+  ) : (
+    "-"
+  )}
+</td>
+<td style={tdStyle}>
+  {u.certificatePdfUrl ? (
+    <a
+      href={u.certificatePdfUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ textDecoration: "underline" }}
+    >
+      View
+    </a>
+  ) : (
+    "-"
+  )}
+</td>
+
+<td style={tdStyle}>
+  <div
+    style={{
+      display: "flex",
+      gap: 8,
+      flexWrap: "wrap",
+    }}
+  >
+    <button
+      onClick={() => openEdit(u)}
+      style={editBtnStyle}
+    >
+      Edit
+    </button>
+    <button
+      onClick={() => openDelete(u)}
+      style={deleteBtnStyle}
+    >
+      Delete
+    </button>
+  </div>
+</td>
                         </tr>
                       ))}
                     </tbody>
