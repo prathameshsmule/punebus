@@ -2,7 +2,6 @@
 
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-// ⚠️ Dhyaan: models/User.js me `export const User = ...` hona chahiye
 import { User } from "../models/User.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_here";
@@ -90,7 +89,6 @@ export const registerUser = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, whatsappPhone, password } = req.body;
-
     if (!password || (!email && !whatsappPhone)) {
       return res
         .status(400)
