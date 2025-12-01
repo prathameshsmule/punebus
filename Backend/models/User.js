@@ -31,10 +31,10 @@ const userSchema = new mongoose.Schema(
     cancelCheque: { type: String },
 
     // Login
-    email: { type: String },
+    email: { type: String, unique: true, sparse: true },
     password: { type: String },
 
-    // ⭐ PDFs ke URLs
+    // ⭐ PDFs ke URLs (admin panel inhi ko padhega)
     aadharPdfUrl: { type: String },
     bankPdfUrl: { type: String },
     certificatePdfUrl: { type: String },
@@ -44,6 +44,5 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// 👇 yahi sahi pattern hai
 const User = mongoose.model("User", userSchema);
 export default User;
