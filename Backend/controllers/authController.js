@@ -1,22 +1,12 @@
 // controllers/authController.js
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import User from "../models/User.js";
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
-// Helper to sign token
-const signToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
-  });
-};
+const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_here";
 
-// STAFF roles list (sirf admin create karega)
-const STAFF_ROLES = ["manager", "accountant", "branchHead", "sales"];
-
-// =========================
-// PUBLIC REGISTRATION
-// =========================
-export const registerUser = async (req, res) => {
+// POST /api/auth/register
+exports.registerUser = async (req, res) => {
   try {
     const {
       companyName,
@@ -36,39 +26,23 @@ export const registerUser = async (req, res) => {
       cancelCheque,
       email,
       password,
+
+      // ⭐ NEW: PDFs from frontend
+      aadharPdfUrl,
+      bankPdfUrl,
+      certificatePdfUrl,
     } = req.body;
 
     if (!companyName || !whatsappPhone || !role) {
-      return res.status(400).json({
-        message: "Company name, WhatsApp phone and role are required",
-      });
+      return res
+        .status(400)
+        .json({ message: "companyName, whatsappPhone and role are required" });
     }
-
-    // ❌ Public se admin/staff register nahi hone dena
-    if (role === "admin" || STAFF_ROLES.includes(role)) {
-      return res.status(403).json({
-        message:
-          "Cannot register as admin or staff via public route. Please contact admin.",
-      });
-    }
-
-    // ---- NEW: files from multer ----
-    const aadharPdfFile = req.files?.aadharPdf?.[0];
-    const bankPdfFile = req.files?.bankPdf?.[0];
-    const certificatePdfFile = req.files?.certificatePdf?.[0];
-
-    const makeFileUrl = (file) =>
-      file
-        ? `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
-        : undefined;
-
-    const aadharPdfUrl = makeFileUrl(aadharPdfFile);
-    const bankPdfUrl = makeFileUrl(bankPdfFile);
-    const certificatePdfUrl = makeFileUrl(certificatePdfFile);
 
     let hashedPassword = undefined;
     if (password) {
-      hashedPassword = await bcrypt.hash(password, 10);
+      const salt = await bcrypt.genSalt(10);
+      hashedPassword = await bcrypt.hash(password, salt);
     }
 
     const user = await User.create({
@@ -90,7 +64,7 @@ export const registerUser = async (req, res) => {
       email: email || undefined,
       password: hashedPassword,
 
-      // store document URLs
+      // ⭐ store PDF URLs in DB
       aadharPdfUrl,
       bankPdfUrl,
       certificatePdfUrl,
@@ -98,63 +72,54 @@ export const registerUser = async (req, res) => {
 
     return res.status(201).json({
       message: "Registration successful",
-      user,
+      userId: user._id,
     });
   } catch (err) {
-    console.error(err);
-
-    if (err.code === 11000) {
-      return res.status(400).json({ message: "Email already exists" });
-    }
-
-    return res.status(500).json({
-      message: "Server error",
-      error: err.message,
-    });
+    console.error("registerUser error:", err);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
-// ================================
-// ✅ MULTI ROLE STAFF LOGIN
-// ================================
-export const adminLogin = async (req, res) => {
-  const { email, password, role } = req.body;
+// POST /api/auth/login
+exports.login = async (req, res) => {
+  try {
+    const { email, whatsappPhone, password } = req.body;
+    if (!password || (!email && !whatsappPhone)) {
+      return res
+        .status(400)
+        .json({ message: "Password and email or phone required" });
+    }
 
-  if (!email || !password || !role) {
-    return res
-      .status(400)
-      .json({ message: "Email, password and role are required" });
+    const query = email ? { email } : { whatsappPhone };
+    const user = await User.findOne(query);
+    if (!user || !user.password) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      message: "Login successful",
+      token,
+      user: {
+        _id: user._id,
+        companyName: user.companyName,
+        role: user.role,
+        email: user.email,
+        whatsappPhone: user.whatsappPhone,
+      },
+    });
+  } catch (err) {
+    console.error("login error:", err);
+    return res.status(500).json({ message: "Server error" });
   }
-
-  let normalizedRole = role;
-  if (normalizedRole === "branch-head") normalizedRole = "branchHead";
-
-  const allowedRoles = ["admin", "manager", "accountant", "branchHead", "sales"];
-
-  if (!allowedRoles.includes(normalizedRole)) {
-    return res.status(403).json({ message: "Invalid role selection" });
-  }
-
-  const user = await User.findOne({ email, role: normalizedRole });
-
-  if (!user) {
-    return res.status(401).json({ message: "Invalid credentials" });
-  }
-
-  const isMatch = await bcrypt.compare(password, user.password || "");
-  if (!isMatch) {
-    return res.status(401).json({ message: "Invalid credentials" });
-  }
-
-  const token = signToken(user._id);
-
-  return res.json({
-    token,
-    user: {
-      id: user._id,
-      name: user.name || user.companyName || "",
-      email: user.email,
-      role: user.role,
-    },
-  });
 };
