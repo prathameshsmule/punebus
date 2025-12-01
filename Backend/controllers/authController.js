@@ -52,20 +52,19 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // NEW: PDFs from multer
-    const files = req.files || {};
-    const aadharPdfPath =
-      files.aadharPdf && files.aadharPdf[0]
-        ? files.aadharPdf[0].path.replace(/\\/g, "/")
+    // ---- NEW: files from multer ----
+    const aadharPdfFile = req.files?.aadharPdf?.[0];
+    const bankPdfFile = req.files?.bankPdf?.[0];
+    const certificatePdfFile = req.files?.certificatePdf?.[0];
+
+    const makeFileUrl = (file) =>
+      file
+        ? `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
         : undefined;
-    const bankPdfPath =
-      files.bankPdf && files.bankPdf[0]
-        ? files.bankPdf[0].path.replace(/\\/g, "/")
-        : undefined;
-    const certificatePdfPath =
-      files.certificatePdf && files.certificatePdf[0]
-        ? files.certificatePdf[0].path.replace(/\\/g, "/")
-        : undefined;
+
+    const aadharPdfUrl = makeFileUrl(aadharPdfFile);
+    const bankPdfUrl = makeFileUrl(bankPdfFile);
+    const certificatePdfUrl = makeFileUrl(certificatePdfFile);
 
     let hashedPassword = undefined;
     if (password) {
@@ -90,16 +89,11 @@ export const registerUser = async (req, res) => {
       cancelCheque,
       email: email || undefined,
       password: hashedPassword,
-      // NEW fields
-      aadharPdf: aadharPdfPath,
-      bankPdf: bankPdfPath,
-      certificatePdf: certificatePdfPath,
-      // optional: also mirror into documents object
-      documents: {
-        aadharPdf: aadharPdfPath,
-        bankPdf: bankPdfPath,
-        certificatePdf: certificatePdfPath,
-      },
+
+      // store document URLs
+      aadharPdfUrl,
+      bankPdfUrl,
+      certificatePdfUrl,
     });
 
     return res.status(201).json({
@@ -132,7 +126,6 @@ export const adminLogin = async (req, res) => {
       .json({ message: "Email, password and role are required" });
   }
 
-  // Frontend se branch-head aa raha ho to normalize
   let normalizedRole = role;
   if (normalizedRole === "branch-head") normalizedRole = "branchHead";
 
@@ -142,7 +135,6 @@ export const adminLogin = async (req, res) => {
     return res.status(403).json({ message: "Invalid role selection" });
   }
 
-  // Ab specific role ke saath user dhoondho
   const user = await User.findOne({ email, role: normalizedRole });
 
   if (!user) {
