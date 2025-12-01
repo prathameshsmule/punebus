@@ -1,12 +1,15 @@
 // controllers/authController.js
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_here";
 
+// -----------------------------
 // POST /api/auth/register
-exports.registerUser = async (req, res) => {
+// -----------------------------
+export const registerUser = async (req, res) => {
   try {
     const {
       companyName,
@@ -27,7 +30,7 @@ exports.registerUser = async (req, res) => {
       email,
       password,
 
-      // ⭐ NEW: PDFs from frontend
+      // ⭐ PDFs from frontend
       aadharPdfUrl,
       bankPdfUrl,
       certificatePdfUrl,
@@ -39,7 +42,7 @@ exports.registerUser = async (req, res) => {
         .json({ message: "companyName, whatsappPhone and role are required" });
     }
 
-    let hashedPassword = undefined;
+    let hashedPassword;
     if (password) {
       const salt = await bcrypt.genSalt(10);
       hashedPassword = await bcrypt.hash(password, salt);
@@ -80,10 +83,13 @@ exports.registerUser = async (req, res) => {
   }
 };
 
-// POST /api/auth/login
-exports.login = async (req, res) => {
+// -----------------------------
+// POST /api/auth/login  (normal user)
+// -----------------------------
+export const login = async (req, res) => {
   try {
     const { email, whatsappPhone, password } = req.body;
+
     if (!password || (!email && !whatsappPhone)) {
       return res
         .status(400)
@@ -120,6 +126,57 @@ exports.login = async (req, res) => {
     });
   } catch (err) {
     console.error("login error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// -----------------------------
+// POST /api/auth/admin/login  (admin / staff login)
+// -----------------------------
+const STAFF_ROLES = ["admin", "manager", "accountant", "branch-head", "sales"];
+
+export const adminLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
+    }
+
+    const user = await User.findOne({
+      email,
+      role: { $in: STAFF_ROLES },
+    });
+
+    if (!user || !user.password) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      message: "Admin login successful",
+      token,
+      user: {
+        _id: user._id,
+        email: user.email,
+        role: user.role,
+        companyName: user.companyName,
+      },
+    });
+  } catch (err) {
+    console.error("adminLogin error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
