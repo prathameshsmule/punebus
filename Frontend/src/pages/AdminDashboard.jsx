@@ -13,7 +13,7 @@ const API_BASE_URL =
 
 // Tabs / filtering roles for main users table (partners etc.)
 const ROLES = [
-  "all",
+   "all",
   "driver",
   "Bus vendor",
   "mechanic",
@@ -44,7 +44,7 @@ const CITY_OPTIONS_BY_STATE = {
 
 // internal staff roles
 const STAFF_ROLES = ["admin", "manager", "accountant", "branch-head", "sales"];
-
+const PARTNER_ROLES = ROLES.filter((r) => r !== "all");
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [activeTab, setActiveTab] = useState("driver");
