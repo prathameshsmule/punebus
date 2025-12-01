@@ -2,7 +2,8 @@
 
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import User from "../models/User.js";
+// ⚠️ Dhyaan: models/User.js me `export const User = ...` hona chahiye
+import { User } from "../models/User.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_here";
 
@@ -30,7 +31,7 @@ export const registerUser = async (req, res) => {
       email,
       password,
 
-      // ⭐ PDFs from frontend
+      // ⭐ NEW: PDFs from frontend
       aadharPdfUrl,
       bankPdfUrl,
       certificatePdfUrl,
