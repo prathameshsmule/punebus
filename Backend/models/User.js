@@ -29,12 +29,17 @@ const userSchema = new mongoose.Schema(
     ifscCode: { type: String },
     cancelCheque: { type: String }, // store URL or reference text
 
+    // NEW: document upload paths
+    aadharPdf: { type: String },
+    bankPdf: { type: String },
+    certificatePdf: { type: String },
+
     // Auth Fields
     email: { type: String, unique: true, sparse: true },
     password: { type: String },
 
     // Roles
-    // ✅ yahan staff roles add kiye: manager, accountant, branchHead, sales
+    // ✅ staff roles: manager, accountant, branchHead, sales
     role: {
       type: String,
       enum: [
