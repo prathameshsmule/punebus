@@ -1,6 +1,6 @@
 // routes/auth.js
 import express from "express";
-import { registerUser, adminLogin } from "../controllers/authController.js";
+import * as authController from "../controllers/authController.js";
 
 import multer from "multer";
 import path from "path";
@@ -50,9 +50,6 @@ const upload = multer({
 
 /* ------------------- Routes ------------------- */
 
-/**
- * POST /api/auth/register
- */
 router.post(
   "/register",
   upload.fields([
@@ -60,12 +57,9 @@ router.post(
     { name: "bankPdf", maxCount: 1 },
     { name: "certificatePdf", maxCount: 1 },
   ]),
-  registerUser
+  authController.registerUser
 );
 
-/**
- * POST /api/auth/admin/login
- */
-router.post("/admin/login", adminLogin);
+router.post("/admin/login", authController.adminLogin);
 
 export default router;
