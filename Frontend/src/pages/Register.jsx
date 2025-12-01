@@ -8,7 +8,6 @@ const ROLE_OPTIONS = [
   "Bus vendor",
   "mechanic",
   "cleaner",
-  "admin",
   "restaurant",
   "parcel",
   "Dry Cleaner",
@@ -25,7 +24,6 @@ const normalizeRoleFromParam = (raw) => {
     vendor: "Bus vendor",
     mechanic: "mechanic",
     cleaner: "cleaner",
-    admin: "admin",
     restaurant: "restaurant",
     parcel: "parcel",
     "dry cleaner": "Dry Cleaner",
@@ -90,6 +88,10 @@ const Register = () => {
     bankAccountNumber: "",
     ifscCode: "",
     cancelCheque: "",
+    // NEW file fields (will hold File objects)
+    aadharPdf: null,
+    bankPdf: null,
+    certificatePdf: null,
   });
 
   useEffect(() => {
@@ -120,15 +122,42 @@ const Register = () => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  // NEW: separate handler for file inputs
+  const handleFileChange = (e) => {
+    const { name, files } = e.target;
+    const file = files && files[0] ? files[0] : null;
+    setForm((prev) => ({
+      ...prev,
+      [name]: file,
+    }));
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMsg(null);
 
     try {
-      // Adjust this path if your backend is prefixed with /api
-      // const res = await api.post("/api/auth/register", form);
-      const res = await api.post("/auth/register", form);
+      // Build FormData for multipart upload
+      const fd = new FormData();
+
+      // Append all non-null values from form
+      Object.entries(form).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && value !== "") {
+          fd.append(key, value);
+        }
+      });
+
+      // If you have email/password fields on UI later, append similarly
+      // fd.append("email", email); etc.
+
+      // NOTE: apiClient baseURL probably already /api, so we keep path same
+      const res = await api.post("/auth/register", fd, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
       const successText = res?.data?.message || "Registered successfully!";
       setMsg({ type: "success", text: successText });
       setShowSuccessPopup(true);
@@ -150,6 +179,9 @@ const Register = () => {
         bankAccountNumber: "",
         ifscCode: "",
         cancelCheque: "",
+        aadharPdf: null,
+        bankPdf: null,
+        certificatePdf: null,
       });
 
       setTimeout(() => setShowSuccessPopup(false), 2500);
@@ -584,13 +616,15 @@ const Register = () => {
               onBlur={() => setFocusedField(null)}
               style={{
                 ...styles.input,
-                ...(focusedField === "aadharNumber" ? styles.inputFocus : {}),
+                ...(focusedField === "aadharNumber"
+                  ? styles.inputFocus
+                  : {}),
               }}
               placeholder="e.g., 8568-1241-7456"
             />
           </label>
 
-          {/* Role */}
+          {/* Role (admin removed) */}
           <label style={styles.label}>
             Role *
             <select
@@ -613,7 +647,6 @@ const Register = () => {
               <option value="restaurant">🍽 Restaurant</option>
               <option value="parcel">📦 Parcel Vendor</option>
               <option value="Dry Cleaner">👕 Dry Cleaner</option>
-              <option value="admin">👤 Admin</option>
             </select>
           </label>
 
@@ -685,13 +718,52 @@ const Register = () => {
               onBlur={() => setFocusedField(null)}
               style={{
                 ...styles.input,
-                ...(focusedField === "cancelCheque" ? styles.inputFocus : {}),
+                ...(focusedField === "cancelCheque"
+                  ? styles.inputFocus
+                  : {}),
               }}
               placeholder="Paste document URL or reference"
             />
             <span style={styles.icon}>
               (You can later upgrade this to actual file upload with Multer)
             </span>
+          </label>
+
+          {/* NEW: PDF uploads */}
+          <label style={styles.label}>
+            Aadhar PDF
+            <input
+              type="file"
+              name="aadharPdf"
+              accept="application/pdf"
+              onChange={handleFileChange}
+              style={styles.input}
+            />
+            <span style={styles.icon}>(PDF only)</span>
+          </label>
+
+          <label style={styles.label}>
+            Bank Account PDF
+            <input
+              type="file"
+              name="bankPdf"
+              accept="application/pdf"
+              onChange={handleFileChange}
+              style={styles.input}
+            />
+            <span style={styles.icon}>(Passbook / bank statement PDF)</span>
+          </label>
+
+          <label style={styles.label}>
+            Certificate PDF
+            <input
+              type="file"
+              name="certificatePdf"
+              accept="application/pdf"
+              onChange={handleFileChange}
+              style={styles.input}
+            />
+            <span style={styles.icon}>(Any registration / license certificate)</span>
           </label>
 
           <button
