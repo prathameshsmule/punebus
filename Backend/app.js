@@ -16,6 +16,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 dotenv.config();
 
