@@ -52,10 +52,6 @@ const upload = multer({
 
 /**
  * POST /api/auth/register
- * Public registration with optional PDFs:
- *  - aadharPdf
- *  - bankPdf
- *  - certificatePdf
  */
 router.post(
   "/register",
