@@ -4,42 +4,40 @@ import mongoose from "mongoose";
 const userSchema = new mongoose.Schema(
   {
     // Legacy fields (old system)
-    name: { type: String }, // old name
-    phone: { type: String }, // old phone / mobile
-    AddharNo: { type: String }, // old aadhar
+    name: { type: String },
+    phone: { type: String },
+    AddharNo: { type: String },
     address: { type: String },
     documents: { type: Object },
 
-    // New Business Fields (registration v2)
-    companyName: { type: String }, // optional here, controller will validate
+    // New Business Fields
+    companyName: { type: String },
     state: { type: String },
     city: { type: String },
     area: { type: String },
 
-    whatsappPhone: { type: String }, // optional here, controller will validate
+    whatsappPhone: { type: String },
     officeNumber: { type: String },
 
     gstNumber: { type: String },
     panNumber: { type: String },
-    aadharNumber: { type: String }, // keep both AddharNo & aadharNumber
+    aadharNumber: { type: String },
 
     aboutInfo: { type: String },
 
     bankAccountNumber: { type: String },
     ifscCode: { type: String },
-    cancelCheque: { type: String }, // store URL or reference text
+    cancelCheque: { type: String }, // URL or reference text
 
-    // NEW: document upload paths
-    aadharPdf: { type: String },
-    bankPdf: { type: String },
-    certificatePdf: { type: String },
+    // NEW: PDF document URLs
+    aadharPdfUrl: { type: String },
+    bankPdfUrl: { type: String },
+    certificatePdfUrl: { type: String },
 
     // Auth Fields
     email: { type: String, unique: true, sparse: true },
     password: { type: String },
 
-    // Roles
-    // ✅ staff roles: manager, accountant, branchHead, sales
     role: {
       type: String,
       enum: [
@@ -51,7 +49,7 @@ const userSchema = new mongoose.Schema(
         "restaurant",
         "parcel",
         "Dry Cleaner",
-        "Bus vendor", // keep if already used in DB
+        "Bus vendor",
         "manager",
         "accountant",
         "branchHead",
@@ -67,5 +65,4 @@ const userSchema = new mongoose.Schema(
 );
 
 const User = mongoose.model("User", userSchema);
-
 export default User;
