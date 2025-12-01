@@ -1,14 +1,17 @@
 // controllers/authController.js
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
 
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { User } from "../models/User.js";
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_here";
 
-// -----------------------------
-// POST /api/auth/register
-// -----------------------------
+/**
+ * POST /api/auth/register
+ * Normal user / partner registration
+ */
 export const registerUser = async (req, res) => {
   try {
     const {
@@ -30,7 +33,7 @@ export const registerUser = async (req, res) => {
       email,
       password,
 
-      // ⭐ NEW: PDFs from frontend
+      // ⭐ PDFs URLs (middleware se aate hain)
       aadharPdfUrl,
       bankPdfUrl,
       certificatePdfUrl,
@@ -83,9 +86,10 @@ export const registerUser = async (req, res) => {
   }
 };
 
-// -----------------------------
-// POST /api/auth/login  (normal user)
-// -----------------------------
+/**
+ * POST /api/auth/login
+ * Normal user login (email OR whatsappPhone + password)
+ */
 export const login = async (req, res) => {
   try {
     const { email, whatsappPhone, password } = req.body;
@@ -129,11 +133,10 @@ export const login = async (req, res) => {
   }
 };
 
-// -----------------------------
-// POST /api/auth/admin/login  (admin / staff login)
-// -----------------------------
-const STAFF_ROLES = ["admin", "manager", "accountant", "branch-head", "sales"];
-
+/**
+ * POST /api/auth/admin/login
+ * Sirf admin / staff roles ko allow karega
+ */
 export const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -144,18 +147,21 @@ export const adminLogin = async (req, res) => {
         .json({ message: "Email and password are required" });
     }
 
+    // Jo roles tum admin dashboard me use kar rahe ho:
+    const STAFF_ROLES = ["admin", "manager", "accountant", "branch-head", "sales"];
+
     const user = await User.findOne({
       email,
       role: { $in: STAFF_ROLES },
     });
 
     if (!user || !user.password) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(400).json({ message: "Invalid admin credentials" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(400).json({ message: "Invalid admin credentials" });
     }
 
     const token = jwt.sign(
@@ -169,9 +175,10 @@ export const adminLogin = async (req, res) => {
       token,
       user: {
         _id: user._id,
-        email: user.email,
-        role: user.role,
         companyName: user.companyName,
+        role: user.role,
+        email: user.email,
+        whatsappPhone: user.whatsappPhone,
       },
     });
   } catch (err) {
