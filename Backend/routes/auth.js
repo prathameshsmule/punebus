@@ -37,6 +37,31 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({ storage, fileFilter });
 
 /**
+ * Middleware: uploaded PDFs se URL bana ke req.body me daal do
+ * taaki authController.registerUser un URLs ko DB me save kar sake.
+ */
+const attachPdfUrls = (req, res, next) => {
+  try {
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+
+    if (req.files?.aadharPdf?.[0]) {
+      req.body.aadharPdfUrl = `${baseUrl}/uploads/${req.files.aadharPdf[0].filename}`;
+    }
+    if (req.files?.bankPdf?.[0]) {
+      req.body.bankPdfUrl = `${baseUrl}/uploads/${req.files.bankPdf[0].filename}`;
+    }
+    if (req.files?.certificatePdf?.[0]) {
+      req.body.certificatePdfUrl = `${baseUrl}/uploads/${req.files.certificatePdf[0].filename}`;
+    }
+
+    next();
+  } catch (err) {
+    console.error("attachPdfUrls error:", err);
+    next(err);
+  }
+};
+
+/**
  * POST /api/auth/register
  * Public registration (not admin)
  * Accepts multipart/form-data with 3 PDFs:
@@ -51,6 +76,7 @@ router.post(
     { name: "bankPdf", maxCount: 1 },
     { name: "certificatePdf", maxCount: 1 },
   ]),
+  attachPdfUrls,
   registerUser
 );
 
