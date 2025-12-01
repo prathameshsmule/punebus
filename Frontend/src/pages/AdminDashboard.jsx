@@ -5,15 +5,9 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
 
-const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL?.replace(/\/api\/?$/, "") ||
-  (api.defaults.baseURL
-    ? api.defaults.baseURL.replace(/\/api\/?$/, "")
-    : window.location.origin);
-
 // Tabs / filtering roles for main users table (partners etc.)
 const ROLES = [
-   "all",
+  "all",
   "driver",
   "Bus vendor",
   "mechanic",
@@ -44,7 +38,7 @@ const CITY_OPTIONS_BY_STATE = {
 
 // internal staff roles
 const STAFF_ROLES = ["admin", "manager", "accountant", "branch-head", "sales"];
-const PARTNER_ROLES = ROLES.filter((r) => r !== "all");
+
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [activeTab, setActiveTab] = useState("driver");
@@ -240,41 +234,26 @@ const AdminDashboard = () => {
   };
 
   // fetch staff / roles (internal users)
-  // fetch staff / roles (internal users)
-const fetchStaffUsers = async () => {
-  setLoadingStaff(true);
-  try {
-    const qp = new URLSearchParams({
-      page: 1,
-      limit: 1000,
-      search: "",
-    });
-    const res = await api.get(`/admin/list/all?${qp.toString()}`);
-    const list = res.data.users || [];
-
-    // Partner roles (jo upper tabs me hain)
-    const partnerRolesLc = ROLES.filter((r) => r !== "all").map((r) =>
-      r.toLowerCase()
-    );
-
-    // ⭐ NEW LOGIC:
-    // Staff = jiska role partner roles me NAHI hai
-    // (admin, manager, accountant, branch-head, sales, aur koi bhi custom role)
-    const staff = list.filter((u) => {
-      if (!u.role) return false;
-      const roleLc = String(u.role).trim().toLowerCase();
-      return !partnerRolesLc.includes(roleLc);
-    });
-
-    setStaffUsers(staff);
-  } catch (err) {
-    console.error("fetchStaffUsers:", err);
-    setStaffUsers([]);
-  } finally {
-    setLoadingStaff(false);
-  }
-};
-
+  const fetchStaffUsers = async () => {
+    setLoadingStaff(true);
+    try {
+      // get all users with big limit, filter staff roles on frontend
+      const qp = new URLSearchParams({
+        page: 1,
+        limit: 1000,
+        search: "",
+      });
+      const res = await api.get(`/admin/list/all?${qp.toString()}`);
+      const list = res.data.users || [];
+      const staff = list.filter((u) => STAFF_ROLES.includes(u.role));
+      setStaffUsers(staff);
+    } catch (err) {
+      console.error("fetchStaffUsers:", err);
+      setStaffUsers([]);
+    } finally {
+      setLoadingStaff(false);
+    }
+  };
 
   // fetch enquiries
   const fetchEnquiries = async () => {
@@ -771,23 +750,18 @@ const fetchStaffUsers = async () => {
     return colors[role] || "#6b7280";
   };
 
-  // ✅ URL helper for PDF files (updated to handle all cases)
-  const getPdfUrl = (path) => {
-    if (!path) return null;
+  // URL helper for PDF files
+const getPdfUrl = (path) => {
+  if (!path) return null;
 
-    // 1) already full URL
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-      return path;
-    }
+  // agar backend se full http/https aa rha hai to seedha use karo
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
 
-    // 2) already starts with /uploads -> just prefix domain
-    if (path.startsWith("/uploads")) {
-      return `${API_BASE_URL}${path}`;
-    }
-
-    // 3) sirf file name ho, to /uploads/docs मानकर
-    return `${API_BASE_URL}/uploads/docs/${path}`;
-  };
+  // agar /uploads/... jaisa relative path aa rha hai
+  return `${window.location.origin}${path.startsWith("/") ? "" : "/"}${path}`;
+};
 
   // ----------------------------
   // Export helpers (PDF & Excel)
@@ -935,7 +909,7 @@ const fetchStaffUsers = async () => {
   };
 
   // ----------------------------
-  // Cards render helpers (MOBILE)
+  // Cards render helpers
   // ----------------------------
 
   // Enquiry mobile card
@@ -1414,9 +1388,6 @@ const fetchStaffUsers = async () => {
         CITY_OPTIONS_BY_STATE["Other"]
       : CITY_OPTIONS_BY_STATE["Other"];
 
-  // =============================
-  // MAIN JSX RETURN
-  // =============================
   return (
     <div
       style={{
@@ -1788,7 +1759,7 @@ const fetchStaffUsers = async () => {
                         ? new Date(s.endDate).toLocaleDateString()
                         : "-"}
                     </div>
-                    {/* status dropdown */}
+                    {/* ⭐ UPDATED: mobile status dropdown */}
                     <div
                       style={{
                         marginTop: 6,
@@ -1880,6 +1851,7 @@ const fetchStaffUsers = async () => {
                             ? new Date(s.endDate).toLocaleDateString()
                             : "-"}
                         </td>
+                        {/* ⭐ UPDATED: desktop status dropdown */}
                         <td style={tdStyle}>
                           <select
                             value={s.status || "pending"}
@@ -2494,153 +2466,106 @@ const fetchStaffUsers = async () => {
   </tr>
 </thead>
                     <tbody>
-  {users.map((u, idx) => (
-    <tr
-      key={u._id}
-      style={{
-        background: idx % 2 === 0 ? "white" : "#f9fafb",
-      }}
-    >
-      <td style={tdStyle}>{u.companyName || "-"}</td>
-      <td style={tdStyle}>{u.state || "-"}</td>
-      <td style={tdStyle}>{u.city || "-"}</td>
-      <td style={tdStyle}>{u.area || "-"}</td>
-      <td style={tdStyle}>{u.whatsappPhone || "-"}</td>
-      <td style={tdStyle}>{u.officeNumber || "-"}</td>
-
-      <td style={tdStyle}>
-        <span
-          style={{
-            padding: "4px 10px",
-            borderRadius: 999,
-            fontSize: 12,
-            fontWeight: 700,
-            background: `${getRoleColor(u.role)}20`,
-            color: getRoleColor(u.role),
-          }}
-        >
-          {u.role}
-        </span>
-      </td>
-
-      <td style={tdStyle}>{u.gstNumber || "-"}</td>
-      <td style={tdStyle}>{u.panNumber || "-"}</td>
-      <td style={tdStyle}>{u.aadharNumber || "-"}</td>
-      <td style={tdStyle}>{u.bankAccountNumber || "-"}</td>
-      <td style={tdStyle}>{u.ifscCode || "-"}</td>
-      <td style={tdStyle}>{u.cancelCheque || "-"}</td>
-      <td style={tdStyle}>{u.email || "-"}</td>
-
-      {/* About & Address columns */}
-      <td style={tdStyle}>{u.aboutInfo || "-"}</td>
-      <td
-        style={{
-          ...tdStyle,
-          maxWidth: 260,
-          whiteSpace: "normal",
-          wordBreak: "break-word",
-        }}
+                      {users.map((u, idx) => (
+                        <tr
+                          key={u._id}
+                          style={{
+                            background: idx % 2 === 0 ? "white" : "#f9fafb",
+                          }}
+                        >
+                          <td style={tdStyle}>{u.companyName || "-"}</td>
+                          <td style={tdStyle}>{u.state || "-"}</td>
+                          <td style={tdStyle}>{u.city || "-"}</td>
+                          <td style={tdStyle}>{u.area || "-"}</td>
+                          <td style={tdStyle}>{u.whatsappPhone || "-"}</td>
+                          <td style={tdStyle}>{u.officeNumber || "-"}</td>
+                          <td style={tdStyle}>
+                            <span
+                              style={{
+                                padding: "4px 10px",
+                                borderRadius: 999,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                background: `${getRoleColor(u.role)}20`,
+                                color: getRoleColor(u.role),
+                              }}
+                            >
+                              {u.role}
+                            </span>
+                          </td>
+                          <td style={tdStyle}>{u.gstNumber || "-"}</td>
+                          <td style={tdStyle}>{u.panNumber || "-"}</td>
+                          <td style={tdStyle}>{u.aadharNumber || "-"}</td>
+                          <td style={tdStyle}>{u.bankAccountNumber || "-"}</td>
+                          <td style={tdStyle}>{u.ifscCode || "-"}</td>
+                          <td style={tdStyle}>{u.cancelCheque || "-"}</td>
+                          <td style={tdStyle}>{u.email || "-"}</td>
+                        {/* ⭐ NEW: PDF LINKS */}
+<td style={tdStyle}>
+  {(() => {
+    const path =
+      u.aadharPdfUrl || u.aadharPdf || u.aadharPdfPath || u.aadhar_pdf;
+    const url = getPdfUrl(path);
+    return url ? (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ textDecoration: "underline", color: "#2563eb", fontWeight: 600 }}
       >
-        {u.address || "-"}
-      </td>
+        View PDF
+      </a>
+    ) : (
+      <span style={{ color: "#9ca3af" }}>Not uploaded</span>
+    );
+  })()}
+</td>
 
-      {/* Aadhar PDF */}
-      <td style={tdStyle}>
-        {(() => {
-          const path =
-            u.aadharPdfUrl || u.aadharPdf || u.aadharPdfPath || u.aadhar_pdf;
-          const url = getPdfUrl(path);
-          return url ? (
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                textDecoration: "underline",
-                color: "#2563eb",
-                fontWeight: 600,
-              }}
-            >
-              View PDF
-            </a>
-          ) : (
-            <span style={{ color: "#9ca3af" }}>Not uploaded</span>
-          );
-        })()}
-      </td>
+<td style={tdStyle}>
+  {(() => {
+    const path =
+      u.bankPdfUrl || u.bankPdf || u.bankPdfPath || u.bank_pdf;
+    const url = getPdfUrl(path);
+    return url ? (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ textDecoration: "underline", color: "#2563eb", fontWeight: 600 }}
+      >
+        View PDF
+      </a>
+    ) : (
+      <span style={{ color: "#9ca3af" }}>Not uploaded</span>
+    );
+  })()}
+</td>
 
-      {/* Bank PDF */}
-      <td style={tdStyle}>
-        {(() => {
-          const path = u.bankPdfUrl || u.bankPdf || u.bankPdfPath || u.bank_pdf;
-          const url = getPdfUrl(path);
-          return url ? (
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                textDecoration: "underline",
-                color: "#2563eb",
-                fontWeight: 600,
-              }}
-            >
-              View PDF
-            </a>
-          ) : (
-            <span style={{ color: "#9ca3af" }}>Not uploaded</span>
-          );
-        })()}
-      </td>
-
-      {/* Certificate PDF */}
-      <td style={tdStyle}>
-        {(() => {
-          const path =
-            u.certificatePdfUrl ||
-            u.certificatePdf ||
-            u.certificatePdfPath ||
-            u.certificate_pdf;
-          const url = getPdfUrl(path);
-          return url ? (
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                textDecoration: "underline",
-                color: "#2563eb",
-                fontWeight: 600,
-              }}
-            >
-              View PDF
-            </a>
-          ) : (
-            <span style={{ color: "#9ca3af" }}>Not uploaded</span>
-          );
-        })()}
-      </td>
-
-      {/* Actions column */}
-      <td style={tdStyle}>
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            flexWrap: "wrap",
-          }}
-        >
-          <button onClick={() => openEdit(u)} style={editBtnStyle}>
-            Edit
-          </button>
-          <button onClick={() => openDelete(u)} style={deleteBtnStyle}>
-            Delete
-          </button>
-        </div>
-      </td>
-    </tr>
-  ))}
-</tbody>
+<td style={tdStyle}>
+  {(() => {
+    const path =
+      u.certificatePdfUrl ||
+      u.certificatePdf ||
+      u.certificatePdfPath ||
+      u.certificate_pdf;
+    const url = getPdfUrl(path);
+    return url ? (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ textDecoration: "underline", color: "#2563eb", fontWeight: 600 }}
+      >
+        View PDF
+      </a>
+    ) : (
+      <span style={{ color: "#9ca3af" }}>Not uploaded</span>
+    );
+  })()}
+</td>
+                        </tr>
+                      ))}
+                    </tbody>
                   </table>
                 </div>
               )}
