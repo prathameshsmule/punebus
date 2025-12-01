@@ -750,6 +750,19 @@ const AdminDashboard = () => {
     return colors[role] || "#6b7280";
   };
 
+  // URL helper for PDF files
+const getPdfUrl = (path) => {
+  if (!path) return null;
+
+  // agar backend se full http/https aa rha hai to seedha use karo
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+
+  // agar /uploads/... jaisa relative path aa rha hai
+  return `${window.location.origin}${path.startsWith("/") ? "" : "/"}${path}`;
+};
+
   // ----------------------------
   // Export helpers (PDF & Excel)
   // ----------------------------
@@ -2487,82 +2500,68 @@ const AdminDashboard = () => {
                           <td style={tdStyle}>{u.ifscCode || "-"}</td>
                           <td style={tdStyle}>{u.cancelCheque || "-"}</td>
                           <td style={tdStyle}>{u.email || "-"}</td>
-                         <td
-  style={{
-    ...tdStyle,
-    maxWidth: 260,
-    whiteSpace: "normal",
-    wordBreak: "break-word",
-  }}
->
-  {u.address || "-"}
-</td>
-
-{/* ⭐ NEW: PDF LINKS */}
+                        {/* ⭐ NEW: PDF LINKS */}
 <td style={tdStyle}>
-  {u.aadharPdfUrl ? (
-    <a
-      href={u.aadharPdfUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{ textDecoration: "underline" }}
-    >
-      View
-    </a>
-  ) : (
-    "-"
-  )}
-</td>
-<td style={tdStyle}>
-  {u.bankPdfUrl ? (
-    <a
-      href={u.bankPdfUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{ textDecoration: "underline" }}
-    >
-      View
-    </a>
-  ) : (
-    "-"
-  )}
-</td>
-<td style={tdStyle}>
-  {u.certificatePdfUrl ? (
-    <a
-      href={u.certificatePdfUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{ textDecoration: "underline" }}
-    >
-      View
-    </a>
-  ) : (
-    "-"
-  )}
+  {(() => {
+    const path =
+      u.aadharPdfUrl || u.aadharPdf || u.aadharPdfPath || u.aadhar_pdf;
+    const url = getPdfUrl(path);
+    return url ? (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ textDecoration: "underline", color: "#2563eb", fontWeight: 600 }}
+      >
+        View PDF
+      </a>
+    ) : (
+      <span style={{ color: "#9ca3af" }}>Not uploaded</span>
+    );
+  })()}
 </td>
 
 <td style={tdStyle}>
-  <div
-    style={{
-      display: "flex",
-      gap: 8,
-      flexWrap: "wrap",
-    }}
-  >
-    <button
-      onClick={() => openEdit(u)}
-      style={editBtnStyle}
-    >
-      Edit
-    </button>
-    <button
-      onClick={() => openDelete(u)}
-      style={deleteBtnStyle}
-    >
-      Delete
-    </button>
-  </div>
+  {(() => {
+    const path =
+      u.bankPdfUrl || u.bankPdf || u.bankPdfPath || u.bank_pdf;
+    const url = getPdfUrl(path);
+    return url ? (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ textDecoration: "underline", color: "#2563eb", fontWeight: 600 }}
+      >
+        View PDF
+      </a>
+    ) : (
+      <span style={{ color: "#9ca3af" }}>Not uploaded</span>
+    );
+  })()}
+</td>
+
+<td style={tdStyle}>
+  {(() => {
+    const path =
+      u.certificatePdfUrl ||
+      u.certificatePdf ||
+      u.certificatePdfPath ||
+      u.certificate_pdf;
+    const url = getPdfUrl(path);
+    return url ? (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ textDecoration: "underline", color: "#2563eb", fontWeight: 600 }}
+      >
+        View PDF
+      </a>
+    ) : (
+      <span style={{ color: "#9ca3af" }}>Not uploaded</span>
+    );
+  })()}
 </td>
                         </tr>
                       ))}
