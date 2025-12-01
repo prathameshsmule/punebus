@@ -3,19 +3,15 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
-// Helper to sign token
 const signToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   });
 };
 
-// STAFF roles list (sirf admin create karega)
 const STAFF_ROLES = ["manager", "accountant", "branchHead", "sales"];
 
-// =========================
 // PUBLIC REGISTRATION
-// =========================
 export const registerUser = async (req, res) => {
   try {
     const {
@@ -38,14 +34,12 @@ export const registerUser = async (req, res) => {
       password,
     } = req.body;
 
-    // Basic validation
     if (!companyName || !whatsappPhone || !role) {
       return res.status(400).json({
         message: "Company name, WhatsApp phone and role are required",
       });
     }
 
-    // ❌ Public se admin/staff register nahi hone dena
     if (role === "admin" || STAFF_ROLES.includes(role)) {
       return res.status(403).json({
         message:
@@ -53,14 +47,10 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // 🔹 Multer se aayi files (routes/auth.js me upload.fields laga hua hai)
     const aadharFile = req.files?.aadharPdf?.[0];
     const bankFile = req.files?.bankPdf?.[0];
     const certFile = req.files?.certificatePdf?.[0];
 
-    // URLs jo DB me store honge aur admin dashboard use karega
-    // NOTE: routes/auth.js me destination uploads/docs hai,
-    // aur app.js me app.use("/uploads", express.static(...)) hai
     const aadharPdfUrl = aadharFile
       ? `/uploads/docs/${aadharFile.filename}`
       : undefined;
@@ -69,13 +59,11 @@ export const registerUser = async (req, res) => {
       ? `/uploads/docs/${certFile.filename}`
       : undefined;
 
-    // Optional password hashing
     let hashedPassword = undefined;
     if (password) {
       hashedPassword = await bcrypt.hash(password, 10);
     }
 
-    // User create
     const user = await User.create({
       companyName,
       address,
@@ -94,8 +82,6 @@ export const registerUser = async (req, res) => {
       cancelCheque,
       email: email || undefined,
       password: hashedPassword,
-
-      // ⭐ PDFs ke URLs (schema ke fields)
       aadharPdfUrl,
       bankPdfUrl,
       certificatePdfUrl,
@@ -119,9 +105,7 @@ export const registerUser = async (req, res) => {
   }
 };
 
-// ================================
-// ✅ MULTI ROLE STAFF LOGIN
-// ================================
+// ADMIN / STAFF LOGIN
 export const adminLogin = async (req, res) => {
   try {
     const { email, password, role } = req.body;
@@ -132,7 +116,6 @@ export const adminLogin = async (req, res) => {
         .json({ message: "Email, password and role are required" });
     }
 
-    // Frontend se branch-head aa raha ho to normalize
     let normalizedRole = role;
     if (normalizedRole === "branch-head") normalizedRole = "branchHead";
 
@@ -148,7 +131,6 @@ export const adminLogin = async (req, res) => {
       return res.status(403).json({ message: "Invalid role selection" });
     }
 
-    // Ab specific role ke saath user dhoondho
     const user = await User.findOne({ email, role: normalizedRole });
 
     if (!user) {
