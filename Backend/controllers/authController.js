@@ -52,10 +52,20 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // 🔹 PDF file paths from multer
-    const aadharPdfPath = req.files?.aadharPdf?.[0]?.path;
-    const bankPdfPath = req.files?.bankPdf?.[0]?.path;
-    const certificatePdfPath = req.files?.certificatePdf?.[0]?.path;
+    // 🔹 Multer se aayi files (fields: aadharPdf, bankPdf, certificatePdf)
+    const aadharFile = req.files?.aadharPdf?.[0];
+    const bankFile = req.files?.bankPdf?.[0];
+    const certFile = req.files?.certificatePdf?.[0];
+
+    // Jo URL admin dashboard me use honge
+    // NOTE: routes/auth.js me storage path uploads/docs hai
+    const aadharPdfUrl = aadharFile
+      ? `/uploads/docs/${aadharFile.filename}`
+      : undefined;
+    const bankPdfUrl = bankFile ? `/uploads/docs/${bankFile.filename}` : undefined;
+    const certificatePdfUrl = certFile
+      ? `/uploads/docs/${certFile.filename}`
+      : undefined;
 
     let hashedPassword = undefined;
     if (password) {
@@ -81,12 +91,10 @@ export const registerUser = async (req, res) => {
       email: email || undefined,
       password: hashedPassword,
 
-      // 👇 Store uploaded documents
-      documents: {
-        aadharPdf: aadharPdfPath,
-        bankPdf: bankPdfPath,
-        certificatePdf: certificatePdfPath,
-      },
+      // ⭐ PDFs ke URLs direct schema wale fields me
+      aadharPdfUrl,
+      bankPdfUrl,
+      certificatePdfUrl,
     });
 
     return res.status(201).json({
