@@ -1,7 +1,53 @@
 // src/pages/Register.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import api from "../api/apiClient";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
+const ROLE_OPTIONS = [
+  "driver",
+  "Bus vendor",
+  "mechanic",
+  "cleaner",
+  "restaurant",
+  "parcel",
+  "Dry Cleaner",
+];
+
+// Accept both direct role values and service slugs
+const normalizeRoleFromParam = (raw) => {
+  const v = (raw || "").toLowerCase();
+
+  const aliasMap = {
+    // direct roles
+    driver: "driver",
+    "bus vendor": "Bus vendor",
+    vendor: "Bus vendor",
+    mechanic: "mechanic",
+    cleaner: "cleaner",
+    admin: "admin", // still allowed in alias, but will fall back to driver below
+    restaurant: "restaurant",
+    parcel: "parcel",
+    "dry cleaner": "Dry Cleaner",
+    "dry-cleaner": "Dry Cleaner",
+
+    // slugs from service titles (old ones still supported)
+    "professional-drivers": "driver",
+    "bus-cleaners": "cleaner",
+    "mechanic-support": "mechanic",
+    "replacement-bus": "Bus vendor",
+    "emergency-services": "Bus vendor",
+    "parcel-delivery": "parcel",
+    "parcel-vendor": "parcel",
+    "parcel-vendors": "parcel",
+    "restaurant-services": "restaurant",
+    "restaurant-vendors": "restaurant",
+  };
+
+  const resolved = aliasMap[v];
+  return ROLE_OPTIONS.includes(resolved) ? resolved : "driver";
+};
+
+// Simple example data – you can expand this as needed
 const STATE_OPTIONS = [
   "Maharashtra",
   "Karnataka",
@@ -21,6 +67,12 @@ const CITY_OPTIONS_BY_STATE = {
 };
 
 const Register = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  const incomingParam = searchParams.get("service");
+  const initialRole = normalizeRoleFromParam(incomingParam);
+
   const [form, setForm] = useState({
     companyName: "",
     address: "",
@@ -32,77 +84,93 @@ const Register = () => {
     gstNumber: "",
     panNumber: "",
     aadharNumber: "",
-    role: "driver",
+    role: initialRole,
     aboutInfo: "",
     bankAccountNumber: "",
     ifscCode: "",
     cancelCheque: "",
-    email: "",
-    password: "",
-    // files
+  });
+
+  // NEW: files state for PDFs
+  const [files, setFiles] = useState({
     aadharPdf: null,
     bankPdf: null,
     certificatePdf: null,
   });
 
-  const [submitting, setSubmitting] = useState(false);
+  useEffect(() => {
+    const updatedRole = normalizeRoleFromParam(incomingParam);
+    setForm((prev) =>
+      prev.role === updatedRole ? prev : { ...prev, role: updatedRole }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingParam]);
 
-  const availableCities =
-    CITY_OPTIONS_BY_STATE[form.state] || CITY_OPTIONS_BY_STATE["Other"];
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
 
-  const handleFileChange = (e) => {
-    const { name, files } = e.target;
-    setForm((prev) => ({ ...prev, [name]: files?.[0] || null }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.companyName || !form.address || !form.role) {
-      alert("Company name, address aur role required hai.");
+    // When state changes, also reset city
+    if (name === "state") {
+      setForm((prev) => ({
+        ...prev,
+        state: value,
+        city: "",
+      }));
       return;
     }
 
-    setSubmitting(true);
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // NEW: handle file change
+  const handleFileChange = (e) => {
+    const { name, files: selectedFiles } = e.target;
+    const file = selectedFiles?.[0] || null;
+    setFiles((prev) => ({
+      ...prev,
+      [name]: file,
+    }));
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMsg(null);
+
     try {
-      const fd = new FormData();
+      // 👇 Build FormData for multipart/form-data
+      const formData = new FormData();
+      Object.entries(form).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(key, value);
+        }
+      });
 
-      // text fields
-      fd.append("companyName", form.companyName);
-      fd.append("address", form.address);
-      fd.append("state", form.state);
-      fd.append("city", form.city);
-      fd.append("area", form.area);
-      fd.append("whatsappPhone", form.whatsappPhone);
-      fd.append("officeNumber", form.officeNumber);
-      fd.append("gstNumber", form.gstNumber);
-      fd.append("panNumber", form.panNumber);
-      fd.append("aadharNumber", form.aadharNumber);
-      fd.append("role", form.role);
-      fd.append("aboutInfo", form.aboutInfo);
-      fd.append("bankAccountNumber", form.bankAccountNumber);
-      fd.append("ifscCode", form.ifscCode);
-      fd.append("cancelCheque", form.cancelCheque);
-      fd.append("email", form.email);
-      fd.append("password", form.password);
+      if (files.aadharPdf) {
+        formData.append("aadharPdf", files.aadharPdf);
+      }
+      if (files.bankPdf) {
+        formData.append("bankPdf", files.bankPdf);
+      }
+      if (files.certificatePdf) {
+        formData.append("certificatePdf", files.certificatePdf);
+      }
 
-      // file fields – IMPORTANT: names backend ke hisaab se
-      if (form.aadharPdf) fd.append("aadharPdf", form.aadharPdf);
-      if (form.bankPdf) fd.append("bankPdf", form.bankPdf);
-      if (form.certificatePdf) fd.append("certificatePdf", form.certificatePdf);
-
-      // tumhara backend route jo bhi hai woh lagao:
-      // example: /auth/register-partner ya /register
-      const res = await api.post("/auth/register", fd, {
+      // Adjust this path if your backend is prefixed with /api
+      // const res = await api.post("/api/auth/register", formData, { ... });
+      const res = await api.post("/auth/register", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      alert(res.data?.message || "Registration successful");
+      const successText = res?.data?.message || "Registered successfully!";
+      setMsg({ type: "success", text: successText });
+      setShowSuccessPopup(true);
 
+      // Reset, but keep role from URL
       setForm({
         companyName: "",
         address: "",
@@ -114,399 +182,654 @@ const Register = () => {
         gstNumber: "",
         panNumber: "",
         aadharNumber: "",
-        role: "driver",
+        role: initialRole,
         aboutInfo: "",
         bankAccountNumber: "",
         ifscCode: "",
         cancelCheque: "",
-        email: "",
-        password: "",
+      });
+
+      setFiles({
         aadharPdf: null,
         bankPdf: null,
         certificatePdf: null,
       });
+
+      setTimeout(() => setShowSuccessPopup(false), 2500);
     } catch (err) {
-      console.error("register error:", err);
-      alert(err?.response?.data?.message || "Registration failed");
+      setMsg({
+        type: "error",
+        text: err?.response?.data?.message || "Registration failed",
+      });
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
+  const styles = {
+    pageContainer: {
+      minHeight: "100vh",
+      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "20px",
+      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    },
+    formWrapper: {
+      background: "#fff",
+      borderRadius: "20px",
+      boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
+      padding: "40px",
+      maxWidth: "600px",
+      width: "100%",
+      animation: "slideIn 0.5s ease-out",
+    },
+    heading: {
+      textAlign: "center",
+      color: "#333",
+      fontSize: "28px",
+      fontWeight: "700",
+      marginBottom: "10px",
+      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      WebkitBackgroundClip: "text",
+      WebkitTextFillColor: "transparent",
+      backgroundClip: "text",
+    },
+    subtitle: {
+      textAlign: "center",
+      color: "#666",
+      fontSize: "14px",
+      marginBottom: "30px",
+    },
+    form: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "18px",
+    },
+    label: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "8px",
+      fontSize: "14px",
+      fontWeight: "600",
+      color: "#333",
+    },
+    input: {
+      padding: "10px 14px",
+      border: "2px solid #e0e0e0",
+      borderRadius: "10px",
+      fontSize: "14px",
+      transition: "all 0.3s ease",
+      outline: "none",
+      backgroundColor: "#f9f9f9",
+    },
+    inputFocus: {
+      border: "2px solid #667eea",
+      backgroundColor: "#fff",
+      transform: "translateY(-2px)",
+      boxShadow: "0 4px 12px rgba(102, 126, 234, 0.2)",
+    },
+    select: {
+      padding: "10px 14px",
+      border: "2px solid #e0e0e0",
+      borderRadius: "10px",
+      fontSize: "14px",
+      transition: "all 0.3s ease",
+      outline: "none",
+      backgroundColor: "#f9f9f9",
+      cursor: "pointer",
+    },
+    textarea: {
+      padding: "10px 14px",
+      border: "2px solid #e0e0e0",
+      borderRadius: "10px",
+      fontSize: "14px",
+      transition: "all 0.3s ease",
+      outline: "none",
+      backgroundColor: "#f9f9f9",
+      minHeight: "80px",
+      resize: "vertical",
+      fontFamily: "inherit",
+    },
+    button: {
+      padding: "14px",
+      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      color: "#fff",
+      border: "none",
+      borderRadius: "10px",
+      fontSize: "16px",
+      fontWeight: "700",
+      cursor: "pointer",
+      transition: "all 0.3s ease",
+      marginTop: "10px",
+      textTransform: "uppercase",
+      letterSpacing: "1px",
+    },
+    buttonHover: {
+      transform: "translateY(-2px)",
+      boxShadow: "0 8px 20px rgba(102, 126, 234, 0.4)",
+    },
+    buttonDisabled: {
+      opacity: "0.6",
+      cursor: "not-allowed",
+      transform: "none",
+    },
+    message: {
+      padding: "12px 16px",
+      borderRadius: "10px",
+      fontSize: "14px",
+      fontWeight: "500",
+      textAlign: "center",
+      marginTop: "10px",
+      animation: "fadeIn 0.3s ease",
+    },
+    messageSuccess: {
+      background: "#d4edda",
+      color: "#155724",
+      border: "1px solid #c3e6cb",
+    },
+    messageError: {
+      background: "#f8d7da",
+      color: "#721c24",
+      border: "1px solid #f5c6cb",
+    },
+    icon: {
+      fontSize: "12px",
+      color: "#999",
+      fontStyle: "italic",
+    },
+    popupOverlay: {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100vw",
+      height: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(0,0,0,0.45)",
+      zIndex: 9999,
+    },
+    popupCard: {
+      background: "#fff",
+      padding: "24px 28px",
+      borderRadius: "12px",
+      boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+      maxWidth: "420px",
+      width: "90%",
+      textAlign: "center",
+    },
+    popupTitle: {
+      fontSize: "18px",
+      fontWeight: 700,
+      marginBottom: "8px",
+    },
+    popupText: {
+      fontSize: "14px",
+      color: "#444",
+      marginBottom: "12px",
+    },
+    popupClose: {
+      padding: "10px 14px",
+      borderRadius: "8px",
+      border: "none",
+      cursor: "pointer",
+      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      color: "#fff",
+      fontWeight: 700,
+    },
+    fieldRow: {
+      display: "flex",
+      gap: "12px",
+      flexWrap: "wrap",
+    },
+    fieldCol: {
+      flex: 1,
+      minWidth: "180px",
+    },
+  };
+
+  const [focusedField, setFocusedField] = useState(null);
+  const [buttonHover, setButtonHover] = useState(false);
+
+  const availableCities =
+    CITY_OPTIONS_BY_STATE[form.state] || CITY_OPTIONS_BY_STATE["Other"];
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
-        display: "flex",
-        justifyContent: "center",
-        padding: "40px 12px",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 640,
-          width: "100%",
-          background: "white",
-          borderRadius: 16,
-          padding: 24,
-          boxShadow: "0 20px 40px rgba(15,23,42,0.25)",
-        }}
-      >
-        <h2
-          style={{
-            textAlign: "center",
-            fontSize: 24,
-            fontWeight: 800,
-            marginBottom: 4,
-            color: "#4f46e5",
-          }}
-        >
+    <div style={styles.pageContainer}>
+      <style>
+        {`
+          @keyframes slideIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @media (max-width: 600px) {
+            .form-wrapper { padding: 25px !important; }
+            .heading { font-size: 24px !important; }
+          }
+        `}
+      </style>
+
+      <div style={styles.formWrapper} className="form-wrapper">
+        <h2 style={styles.heading} className="heading">
           Partner Registration
         </h2>
-        <p
-          style={{
-            textAlign: "center",
-            color: "#6b7280",
-            marginBottom: 20,
-            fontSize: 14,
-          }}
-        >
+        <p style={styles.subtitle}>
           Register your company with PuneBus and start working with us.
         </p>
 
-        <form onSubmit={handleSubmit}>
-          {/* Company & Address */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div>
-              <label style={labelStyle}>Company Name *</label>
-              <input
-                name="companyName"
-                value={form.companyName}
-                onChange={handleChange}
-                style={inputStyle}
-                placeholder="Enter your company name"
-                required
-              />
-            </div>
+        <form onSubmit={submit} style={styles.form}>
+          {/* Company name */}
+          <label style={styles.label}>
+            Company Name *
+            <input
+              name="companyName"
+              value={form.companyName}
+              onChange={handleChange}
+              onFocus={() => setFocusedField("companyName")}
+              onBlur={() => setFocusedField(null)}
+              style={{
+                ...styles.input,
+                ...(focusedField === "companyName" ? styles.inputFocus : {}),
+              }}
+              placeholder="Enter your company name"
+              required
+            />
+          </label>
 
-            <div>
-              <label style={labelStyle}>Address *</label>
-              <textarea
-                name="address"
-                value={form.address}
-                onChange={handleChange}
-                style={{ ...inputStyle, minHeight: 70, resize: "vertical" }}
-                placeholder="Flat / Building / Street / Landmark"
-                required
-              />
-            </div>
+          {/* Address & Area */}
+          <label style={styles.label}>
+            Address *
+            <textarea
+              name="address"
+              value={form.address}
+              onChange={handleChange}
+              onFocus={() => setFocusedField("address")}
+              onBlur={() => setFocusedField(null)}
+              style={{
+                ...styles.textarea,
+                ...(focusedField === "address" ? styles.inputFocus : {}),
+              }}
+              placeholder="Flat / Building / Street / Landmark"
+              required
+            />
+          </label>
 
-            {/* State / City / Area */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 160 }}>
-                <label style={labelStyle}>State</label>
+          <div style={styles.fieldRow}>
+            <div style={styles.fieldCol}>
+              <label style={styles.label}>
+                State *
                 <select
                   name="state"
                   value={form.state}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      state: e.target.value,
-                      city: "",
-                    }))
-                  }
-                  style={inputStyle}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("state")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...styles.select,
+                    ...(focusedField === "state" ? styles.inputFocus : {}),
+                  }}
+                  required
                 >
                   <option value="">Select state</option>
-                  {STATE_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
+                  {STATE_OPTIONS.map((st) => (
+                    <option key={st} value={st}>
+                      {st}
                     </option>
                   ))}
                 </select>
-              </div>
+              </label>
+            </div>
 
-              <div style={{ flex: 1, minWidth: 160 }}>
-                <label style={labelStyle}>City</label>
+            <div style={styles.fieldCol}>
+              <label style={styles.label}>
+                City *
                 <select
                   name="city"
                   value={form.city}
                   onChange={handleChange}
-                  style={inputStyle}
+                  onFocus={() => setFocusedField("city")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...styles.select,
+                    ...(focusedField === "city" ? styles.inputFocus : {}),
+                  }}
+                  required
                   disabled={!form.state}
                 >
                   <option value="">
                     {form.state ? "Select city" : "Select state first"}
                   </option>
-                  {availableCities.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                  {availableCities.map((ct) => (
+                    <option key={ct} value={ct}>
+                      {ct}
                     </option>
                   ))}
                 </select>
-              </div>
-
-              <div style={{ flex: 1, minWidth: 160 }}>
-                <label style={labelStyle}>Area / Locality</label>
-                <input
-                  name="area"
-                  value={form.area}
-                  onChange={handleChange}
-                  style={inputStyle}
-                  placeholder="Area / Locality"
-                />
-              </div>
+              </label>
             </div>
+          </div>
 
-            {/* Contact */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={labelStyle}>WhatsApp Phone *</label>
+          <label style={styles.label}>
+            Area / Locality *
+            <input
+              name="area"
+              value={form.area}
+              onChange={handleChange}
+              onFocus={() => setFocusedField("area")}
+              onBlur={() => setFocusedField(null)}
+              style={{
+                ...styles.input,
+                ...(focusedField === "area" ? styles.inputFocus : {}),
+              }}
+              placeholder="e.g., Kothrud, Hinjewadi"
+              required
+            />
+          </label>
+
+          {/* Contact numbers */}
+          <div style={styles.fieldRow}>
+            <div style={styles.fieldCol}>
+              <label style={styles.label}>
+                Phone Number (WhatsApp) *
                 <input
                   name="whatsappPhone"
+                  type="tel"
                   value={form.whatsappPhone}
                   onChange={handleChange}
-                  style={inputStyle}
-                  placeholder="Primary WhatsApp number"
+                  onFocus={() => setFocusedField("whatsappPhone")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...styles.input,
+                    ...(focusedField === "whatsappPhone"
+                      ? styles.inputFocus
+                      : {}),
+                  }}
+                  placeholder="WhatsApp number"
                   required
                 />
-              </div>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={labelStyle}>Office Number</label>
-                <input
-                  name="officeNumber"
-                  value={form.officeNumber}
-                  onChange={handleChange}
-                  style={inputStyle}
-                  placeholder="Office phone (optional)"
-                />
-              </div>
+              </label>
             </div>
 
-            {/* GST / PAN / Aadhar text */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 170 }}>
-                <label style={labelStyle}>GST Number</label>
+            <div style={styles.fieldCol}>
+              <label style={styles.label}>
+                Office Number
+                <input
+                  name="officeNumber"
+                  type="tel"
+                  value={form.officeNumber}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("officeNumber")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...styles.input,
+                    ...(focusedField === "officeNumber"
+                      ? styles.inputFocus
+                      : {}),
+                  }}
+                  placeholder="Landline / office contact"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* GST / PAN / Aadhar */}
+          <div style={styles.fieldRow}>
+            <div style={styles.fieldCol}>
+              <label style={styles.label}>
+                GSTN Number
                 <input
                   name="gstNumber"
                   value={form.gstNumber}
                   onChange={handleChange}
-                  style={inputStyle}
-                  placeholder="GSTN"
+                  onFocus={() => setFocusedField("gstNumber")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...styles.input,
+                    ...(focusedField === "gstNumber" ? styles.inputFocus : {}),
+                  }}
+                  placeholder="e.g., 27ABCDE1234F1Z5"
                 />
-              </div>
-              <div style={{ flex: 1, minWidth: 170 }}>
-                <label style={labelStyle}>PAN Number</label>
+              </label>
+            </div>
+
+            <div style={styles.fieldCol}>
+              <label style={styles.label}>
+                PAN Number
                 <input
                   name="panNumber"
                   value={form.panNumber}
                   onChange={handleChange}
-                  style={inputStyle}
-                  placeholder="PAN"
+                  onFocus={() => setFocusedField("panNumber")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...styles.input,
+                    ...(focusedField === "panNumber" ? styles.inputFocus : {}),
+                  }}
+                  placeholder="e.g., ABCDE1234F"
                 />
-              </div>
-              <div style={{ flex: 1, minWidth: 170 }}>
-                <label style={labelStyle}>Aadhaar Number</label>
-                <input
-                  name="aadharNumber"
-                  value={form.aadharNumber}
-                  onChange={handleChange}
-                  style={inputStyle}
-                  placeholder="Aadhaar"
-                />
-              </div>
+              </label>
             </div>
+          </div>
 
-            {/* Role */}
-            <div>
-              <label style={labelStyle}>Role *</label>
-              <select
-                name="role"
-                value={form.role}
-                onChange={handleChange}
-                style={inputStyle}
-                required
-              >
-                <option value="driver">Driver</option>
-                <option value="Bus vendor">Bus Vendor</option>
-                <option value="mechanic">Mechanic</option>
-                <option value="cleaner">Cleaner</option>
-                <option value="restaurant">Restaurant</option>
-                <option value="parcel">Parcel</option>
-                <option value="Dry Cleaner">Dry Cleaner</option>
-              </select>
-            </div>
+          <label style={styles.label}>
+            Aadhar Number
+            <input
+              name="aadharNumber"
+              value={form.aadharNumber}
+              onChange={handleChange}
+              onFocus={() => setFocusedField("aadharNumber")}
+              onBlur={() => setFocusedField(null)}
+              style={{
+                ...styles.input,
+                ...(focusedField === "aadharNumber"
+                  ? styles.inputFocus
+                  : {}),
+              }}
+              placeholder="e.g., 8568-1241-7456"
+            />
+          </label>
 
-            {/* BANK DETAILS */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={labelStyle}>Bank Account Number</label>
+          {/* Role – admin removed */}
+          <label style={styles.label}>
+            Role *
+            <select
+              name="role"
+              value={form.role}
+              onChange={handleChange}
+              onFocus={() => setFocusedField("role")}
+              onBlur={() => setFocusedField(null)}
+              style={{
+                ...styles.select,
+                ...(focusedField === "role" ? styles.inputFocus : {}),
+              }}
+              required
+            >
+              <option value="">Select role</option>
+              <option value="driver">🚍 Driver</option>
+              <option value="Bus vendor">🚌 Bus Vendor</option>
+              <option value="mechanic">🔧 Mechanic</option>
+              <option value="cleaner">🧹 Cleaner</option>
+              <option value="restaurant">🍽 Restaurant</option>
+              <option value="parcel">📦 Parcel Vendor</option>
+              <option value="Dry Cleaner">👕 Dry Cleaner</option>
+            </select>
+          </label>
+
+          {/* About */}
+          <label style={styles.label}>
+            About / Additional Info
+            <textarea
+              name="aboutInfo"
+              value={form.aboutInfo}
+              onChange={handleChange}
+              onFocus={() => setFocusedField("aboutInfo")}
+              onBlur={() => setFocusedField(null)}
+              style={{
+                ...styles.textarea,
+                ...(focusedField === "aboutInfo" ? styles.inputFocus : {}),
+              }}
+              placeholder="Briefly describe your services, experience, fleet details, etc."
+            />
+          </label>
+
+          {/* Bank details */}
+          <div style={styles.fieldRow}>
+            <div style={styles.fieldCol}>
+              <label style={styles.label}>
+                Bank Account Number
                 <input
                   name="bankAccountNumber"
                   value={form.bankAccountNumber}
                   onChange={handleChange}
-                  style={inputStyle}
+                  onFocus={() => setFocusedField("bankAccountNumber")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...styles.input,
+                    ...(focusedField === "bankAccountNumber"
+                      ? styles.inputFocus
+                      : {}),
+                  }}
+                  placeholder="Enter account number"
                 />
-              </div>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={labelStyle}>IFSC Code</label>
+              </label>
+            </div>
+
+            <div style={styles.fieldCol}>
+              <label style={styles.label}>
+                IFSC Code
                 <input
                   name="ifscCode"
                   value={form.ifscCode}
                   onChange={handleChange}
-                  style={inputStyle}
+                  onFocus={() => setFocusedField("ifscCode")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...styles.input,
+                    ...(focusedField === "ifscCode" ? styles.inputFocus : {}),
+                  }}
+                  placeholder="e.g., HDFC0001234"
                 />
-              </div>
+              </label>
             </div>
+          </div>
 
-            <div>
-              <label style={labelStyle}>Cancelled Cheque (ref / text)</label>
-              <input
-                name="cancelCheque"
-                value={form.cancelCheque}
-                onChange={handleChange}
-                style={inputStyle}
-                placeholder="Cheque number / bank name etc."
-              />
-            </div>
-
-            {/* ABOUT */}
-            <div>
-              <label style={labelStyle}>About / Services</label>
-              <textarea
-                name="aboutInfo"
-                value={form.aboutInfo}
-                onChange={handleChange}
-                style={{ ...inputStyle, minHeight: 70, resize: "vertical" }}
-                placeholder="Short description of your services, fleet details, etc."
-              />
-            </div>
-
-            {/* FILE UPLOADS – Aadhaar / Bank / Certificate PDF */}
-            <div>
-              <label style={labelStyle}>Aadhaar PDF</label>
-              <input
-                type="file"
-                name="aadharPdf"
-                accept="application/pdf"
-                onChange={handleFileChange}
-                style={fileInputStyle}
-              />
-              <small style={hintStyle}>
-                Upload Aadhaar card as PDF – optional but recommended.
-              </small>
-            </div>
-
-            <div>
-              <label style={labelStyle}>Bank Account PDF</label>
-              <input
-                type="file"
-                name="bankPdf"
-                accept="application/pdf"
-                onChange={handleFileChange}
-                style={fileInputStyle}
-              />
-              <small style={hintStyle}>
-                Bank passbook / statement PDF – optional.
-              </small>
-            </div>
-
-            <div>
-              <label style={labelStyle}>Certificate PDF</label>
-              <input
-                type="file"
-                name="certificatePdf"
-                accept="application/pdf"
-                onChange={handleFileChange}
-                style={fileInputStyle}
-              />
-              <small style={hintStyle}>
-                Registration / licence certificate PDF – optional.
-              </small>
-            </div>
-
-            {/* LOGIN DETAILS */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={labelStyle}>Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  style={inputStyle}
-                  placeholder="Email (optional)"
-                />
-              </div>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={labelStyle}>Password</label>
-                <input
-                  type="password"
-                  name="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  style={inputStyle}
-                  placeholder="Password (optional)"
-                />
-              </div>
-            </div>
-
-            {/* SUBMIT BUTTON */}
-            <button
-              type="submit"
-              disabled={submitting}
+          {/* Cancelled cheque (still as text/URL if you want) */}
+          <label style={styles.label}>
+            Cancelled Cheque (Reference / URL)
+            <input
+              name="cancelCheque"
+              value={form.cancelCheque}
+              onChange={handleChange}
+              onFocus={() => setFocusedField("cancelCheque")}
+              onBlur={() => setFocusedField(null)}
               style={{
-                marginTop: 12,
-                width: "100%",
-                padding: "12px 16px",
-                borderRadius: 999,
-                border: "none",
-                fontWeight: 800,
-                fontSize: 15,
-                cursor: submitting ? "not-allowed" : "pointer",
-                background:
-                  "linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #8b5cf6 100%)",
-                color: "white",
-                boxShadow: "0 10px 20px rgba(79,70,229,0.4)",
+                ...styles.input,
+                ...(focusedField === "cancelCheque"
+                  ? styles.inputFocus
+                  : {}),
+              }}
+              placeholder="Paste document URL or reference"
+            />
+            <span style={styles.icon}>
+              (You can keep this as URL or later replace with file upload)
+            </span>
+          </label>
+
+          {/* NEW: PDF uploads */}
+          <label style={styles.label}>
+            Aadhar PDF
+            <input
+              type="file"
+              name="aadharPdf"
+              accept="application/pdf"
+              onChange={handleFileChange}
+            />
+            <span style={styles.icon}>
+              (PDF only. Optional – can make it required if needed)
+            </span>
+          </label>
+
+          <label style={styles.label}>
+            Bank Account PDF
+            <input
+              type="file"
+              name="bankPdf"
+              accept="application/pdf"
+              onChange={handleFileChange}
+            />
+            <span style={styles.icon}>
+              (Bank statement / passbook scan in PDF)
+            </span>
+          </label>
+
+          <label style={styles.label}>
+            Certificate PDF
+            <input
+              type="file"
+              name="certificatePdf"
+              accept="application/pdf"
+              onChange={handleFileChange}
+            />
+            <span style={styles.icon}>
+              (Registration / GST / any relevant certificate in PDF)
+            </span>
+          </label>
+
+          <button
+            type="submit"
+            disabled={loading}
+            onMouseEnter={() => setButtonHover(true)}
+            onMouseLeave={() => setButtonHover(false)}
+            style={{
+              ...styles.button,
+              ...(buttonHover && !loading ? styles.buttonHover : {}),
+              ...(loading ? styles.buttonDisabled : {}),
+            }}
+          >
+            {loading ? "⏳ Registering..." : "✓ Register Now"}
+          </button>
+
+          {msg && (
+            <div
+              style={{
+                ...styles.message,
+                ...(msg.type === "success"
+                  ? styles.messageSuccess
+                  : styles.messageError),
               }}
             >
-              {submitting ? "Registering..." : "✓ REGISTER NOW"}
-            </button>
-          </div>
+              {msg.type === "success" ? "✓ " : "✗ "}
+              {msg.text}
+            </div>
+          )}
         </form>
       </div>
+
+      {/* Success popup modal */}
+      {showSuccessPopup && (
+        <div style={styles.popupOverlay} role="dialog" aria-modal="true">
+          <div style={styles.popupCard}>
+            <div style={styles.popupTitle}>Registration Successful</div>
+            <div style={styles.popupText}>
+              {msg?.text || "You have been registered successfully."}
+            </div>
+            <button
+              style={styles.popupClose}
+              onClick={() => setShowSuccessPopup(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
-
-const inputStyle = {
-  width: "100%",
-  padding: "10px 12px",
-  borderRadius: 10,
-  border: "1px solid #d1d5db",
-  fontSize: 14,
-  outline: "none",
-};
-
-const fileInputStyle = {
-  ...inputStyle,
-  padding: "8px 10px",
-};
-
-const labelStyle = {
-  display: "block",
-  marginBottom: 4,
-  fontSize: 13,
-  fontWeight: 600,
-  color: "#374151",
-};
-
-const hintStyle = {
-  display: "block",
-  marginTop: 4,
-  fontSize: 11,
-  color: "#6b7280",
 };
 
 export default Register;
