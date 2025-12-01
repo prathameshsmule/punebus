@@ -14,7 +14,7 @@ const signToken = (userId) => {
 const STAFF_ROLES = ["manager", "accountant", "branchHead", "sales"];
 
 // =========================
-// PUBLIC REGISTRATION SAME
+// PUBLIC REGISTRATION
 // =========================
 export const registerUser = async (req, res) => {
   try {
@@ -52,6 +52,21 @@ export const registerUser = async (req, res) => {
       });
     }
 
+    // NEW: PDFs from multer
+    const files = req.files || {};
+    const aadharPdfPath =
+      files.aadharPdf && files.aadharPdf[0]
+        ? files.aadharPdf[0].path.replace(/\\/g, "/")
+        : undefined;
+    const bankPdfPath =
+      files.bankPdf && files.bankPdf[0]
+        ? files.bankPdf[0].path.replace(/\\/g, "/")
+        : undefined;
+    const certificatePdfPath =
+      files.certificatePdf && files.certificatePdf[0]
+        ? files.certificatePdf[0].path.replace(/\\/g, "/")
+        : undefined;
+
     let hashedPassword = undefined;
     if (password) {
       hashedPassword = await bcrypt.hash(password, 10);
@@ -75,6 +90,16 @@ export const registerUser = async (req, res) => {
       cancelCheque,
       email: email || undefined,
       password: hashedPassword,
+      // NEW fields
+      aadharPdf: aadharPdfPath,
+      bankPdf: bankPdfPath,
+      certificatePdf: certificatePdfPath,
+      // optional: also mirror into documents object
+      documents: {
+        aadharPdf: aadharPdfPath,
+        bankPdf: bankPdfPath,
+        certificatePdf: certificatePdfPath,
+      },
     });
 
     return res.status(201).json({
@@ -137,7 +162,7 @@ export const adminLogin = async (req, res) => {
       id: user._id,
       name: user.name || user.companyName || "",
       email: user.email,
-      role: user.role, // yahi baad me front pe use ho raha hai
+      role: user.role,
     },
   });
 };
