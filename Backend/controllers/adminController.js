@@ -135,7 +135,14 @@ export const listByCategory = async (req, res) => {
   const { page = 1, limit = 20, search } = req.query;
 
   const query = {};
-  if (role && role !== "all") query.role = role;
+
+  if (role && role !== "all") {
+    // specific role ka filter
+    query.role = role;
+  } else {
+    // "all" ke case me staff ko exclude karo
+    query.role = { $nin: STAFF_ROLES };
+  }
 
   if (search) {
     query.$or = [
@@ -162,6 +169,7 @@ export const listByCategory = async (req, res) => {
     users,
   });
 };
+
 
 /** mechanicList wrapper */
 export const mechanicList = async (req, res) => {
