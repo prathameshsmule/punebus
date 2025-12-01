@@ -240,26 +240,41 @@ const AdminDashboard = () => {
   };
 
   // fetch staff / roles (internal users)
-  const fetchStaffUsers = async () => {
-    setLoadingStaff(true);
-    try {
-      // get all users with big limit, filter staff roles on frontend
-      const qp = new URLSearchParams({
-        page: 1,
-        limit: 1000,
-        search: "",
-      });
-      const res = await api.get(`/admin/list/all?${qp.toString()}`);
-      const list = res.data.users || [];
-      const staff = list.filter((u) => STAFF_ROLES.includes(u.role));
-      setStaffUsers(staff);
-    } catch (err) {
-      console.error("fetchStaffUsers:", err);
-      setStaffUsers([]);
-    } finally {
-      setLoadingStaff(false);
-    }
-  };
+  // fetch staff / roles (internal users)
+const fetchStaffUsers = async () => {
+  setLoadingStaff(true);
+  try {
+    const qp = new URLSearchParams({
+      page: 1,
+      limit: 1000,
+      search: "",
+    });
+    const res = await api.get(`/admin/list/all?${qp.toString()}`);
+    const list = res.data.users || [];
+
+    // Partner roles (jo upper tabs me hain)
+    const partnerRolesLc = ROLES.filter((r) => r !== "all").map((r) =>
+      r.toLowerCase()
+    );
+
+    // ⭐ NEW LOGIC:
+    // Staff = jiska role partner roles me NAHI hai
+    // (admin, manager, accountant, branch-head, sales, aur koi bhi custom role)
+    const staff = list.filter((u) => {
+      if (!u.role) return false;
+      const roleLc = String(u.role).trim().toLowerCase();
+      return !partnerRolesLc.includes(roleLc);
+    });
+
+    setStaffUsers(staff);
+  } catch (err) {
+    console.error("fetchStaffUsers:", err);
+    setStaffUsers([]);
+  } finally {
+    setLoadingStaff(false);
+  }
+};
+
 
   // fetch enquiries
   const fetchEnquiries = async () => {
