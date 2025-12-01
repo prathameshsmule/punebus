@@ -38,6 +38,7 @@ export const registerUser = async (req, res) => {
       password,
     } = req.body;
 
+    // Basic validation
     if (!companyName || !whatsappPhone || !role) {
       return res.status(400).json({
         message: "Company name, WhatsApp phone and role are required",
@@ -52,13 +53,14 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // 🔹 Multer se aayi files (fields: aadharPdf, bankPdf, certificatePdf)
+    // 🔹 Multer se aayi files (routes/auth.js me upload.fields laga hua hai)
     const aadharFile = req.files?.aadharPdf?.[0];
     const bankFile = req.files?.bankPdf?.[0];
     const certFile = req.files?.certificatePdf?.[0];
 
-    // Jo URL admin dashboard me use honge
-    // NOTE: routes/auth.js me storage path uploads/docs hai
+    // URLs jo DB me store honge aur admin dashboard use karega
+    // NOTE: routes/auth.js me destination uploads/docs hai,
+    // aur app.js me app.use("/uploads", express.static(...)) hai
     const aadharPdfUrl = aadharFile
       ? `/uploads/docs/${aadharFile.filename}`
       : undefined;
@@ -67,11 +69,13 @@ export const registerUser = async (req, res) => {
       ? `/uploads/docs/${certFile.filename}`
       : undefined;
 
+    // Optional password hashing
     let hashedPassword = undefined;
     if (password) {
       hashedPassword = await bcrypt.hash(password, 10);
     }
 
+    // User create
     const user = await User.create({
       companyName,
       address,
@@ -91,7 +95,7 @@ export const registerUser = async (req, res) => {
       email: email || undefined,
       password: hashedPassword,
 
-      // ⭐ PDFs ke URLs direct schema wale fields me
+      // ⭐ PDFs ke URLs (schema ke fields)
       aadharPdfUrl,
       bankPdfUrl,
       certificatePdfUrl,
@@ -102,7 +106,7 @@ export const registerUser = async (req, res) => {
       user,
     });
   } catch (err) {
-    console.error(err);
+    console.error("[registerUser] error:", err);
 
     if (err.code === 11000) {
       return res.status(400).json({ message: "Email already exists" });
@@ -119,45 +123,56 @@ export const registerUser = async (req, res) => {
 // ✅ MULTI ROLE STAFF LOGIN
 // ================================
 export const adminLogin = async (req, res) => {
-  const { email, password, role } = req.body;
+  try {
+    const { email, password, role } = req.body;
 
-  if (!email || !password || !role) {
-    return res
-      .status(400)
-      .json({ message: "Email, password and role are required" });
+    if (!email || !password || !role) {
+      return res
+        .status(400)
+        .json({ message: "Email, password and role are required" });
+    }
+
+    // Frontend se branch-head aa raha ho to normalize
+    let normalizedRole = role;
+    if (normalizedRole === "branch-head") normalizedRole = "branchHead";
+
+    const allowedRoles = [
+      "admin",
+      "manager",
+      "accountant",
+      "branchHead",
+      "sales",
+    ];
+
+    if (!allowedRoles.includes(normalizedRole)) {
+      return res.status(403).json({ message: "Invalid role selection" });
+    }
+
+    // Ab specific role ke saath user dhoondho
+    const user = await User.findOne({ email, role: normalizedRole });
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password || "");
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const token = signToken(user._id);
+
+    return res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name || user.companyName || "",
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    console.error("[adminLogin] error:", err);
+    return res.status(500).json({ message: "Server error" });
   }
-
-  // Frontend se branch-head aa raha ho to normalize
-  let normalizedRole = role;
-  if (normalizedRole === "branch-head") normalizedRole = "branchHead";
-
-  const allowedRoles = ["admin", "manager", "accountant", "branchHead", "sales"];
-
-  if (!allowedRoles.includes(normalizedRole)) {
-    return res.status(403).json({ message: "Invalid role selection" });
-  }
-
-  // Ab specific role ke saath user dhoondho
-  const user = await User.findOne({ email, role: normalizedRole });
-
-  if (!user) {
-    return res.status(401).json({ message: "Invalid credentials" });
-  }
-
-  const isMatch = await bcrypt.compare(password, user.password || "");
-  if (!isMatch) {
-    return res.status(401).json({ message: "Invalid credentials" });
-  }
-
-  const token = signToken(user._id);
-
-  return res.json({
-    token,
-    user: {
-      id: user._id,
-      name: user.name || user.companyName || "",
-      email: user.email,
-      role: user.role,
-    },
-  });
 };
