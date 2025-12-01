@@ -11,12 +11,12 @@ import "express-async-errors";
 import { connectDB } from "./config/db.js";
 import authRoutes from "./routes/auth.js";
 import adminRoutes from "./routes/admin.js";
-import enquiryRoutes from "./routes/enquiry.js";
+// ✅ yahi sahi path hai – file ka actual naam enquiryRoutes.js hai
+import enquiryRoutes from "./routes/enquiryRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 dotenv.config();
 
