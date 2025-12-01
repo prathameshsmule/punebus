@@ -1,17 +1,21 @@
 // controllers/authController.js
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+// Helper to sign token
+const signToken = (userId) => {
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+  });
+};
 
-const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_here";
+// STAFF roles list (sirf admin create karega)
+const STAFF_ROLES = ["manager", "accountant", "branchHead", "sales"];
 
-/**
- * POST /api/auth/register
- * Normal user / partner registration
- */
+// =========================
+// PUBLIC REGISTRATION
+// =========================
 export const registerUser = async (req, res) => {
   try {
     const {
@@ -32,23 +36,30 @@ export const registerUser = async (req, res) => {
       cancelCheque,
       email,
       password,
-
-      // ⭐ PDFs URLs (middleware se aate hain)
-      aadharPdfUrl,
-      bankPdfUrl,
-      certificatePdfUrl,
     } = req.body;
 
     if (!companyName || !whatsappPhone || !role) {
-      return res
-        .status(400)
-        .json({ message: "companyName, whatsappPhone and role are required" });
+      return res.status(400).json({
+        message: "Company name, WhatsApp phone and role are required",
+      });
     }
 
-    let hashedPassword;
+    // ❌ Public se admin/staff register nahi hone dena
+    if (role === "admin" || STAFF_ROLES.includes(role)) {
+      return res.status(403).json({
+        message:
+          "Cannot register as admin or staff via public route. Please contact admin.",
+      });
+    }
+
+    // 🔹 PDF file paths from multer
+    const aadharPdfPath = req.files?.aadharPdf?.[0]?.path;
+    const bankPdfPath = req.files?.bankPdf?.[0]?.path;
+    const certificatePdfPath = req.files?.certificatePdf?.[0]?.path;
+
+    let hashedPassword = undefined;
     if (password) {
-      const salt = await bcrypt.genSalt(10);
-      hashedPassword = await bcrypt.hash(password, salt);
+      hashedPassword = await bcrypt.hash(password, 10);
     }
 
     const user = await User.create({
@@ -70,119 +81,75 @@ export const registerUser = async (req, res) => {
       email: email || undefined,
       password: hashedPassword,
 
-      // ⭐ store PDF URLs in DB
-      aadharPdfUrl,
-      bankPdfUrl,
-      certificatePdfUrl,
+      // 👇 Store uploaded documents
+      documents: {
+        aadharPdf: aadharPdfPath,
+        bankPdf: bankPdfPath,
+        certificatePdf: certificatePdfPath,
+      },
     });
 
     return res.status(201).json({
       message: "Registration successful",
-      userId: user._id,
+      user,
     });
   } catch (err) {
-    console.error("registerUser error:", err);
-    return res.status(500).json({ message: "Server error" });
+    console.error(err);
+
+    if (err.code === 11000) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    return res.status(500).json({
+      message: "Server error",
+      error: err.message,
+    });
   }
 };
 
-/**
- * POST /api/auth/login
- * Normal user login (email OR whatsappPhone + password)
- */
-export const login = async (req, res) => {
-  try {
-    const { email, whatsappPhone, password } = req.body;
-    if (!password || (!email && !whatsappPhone)) {
-      return res
-        .status(400)
-        .json({ message: "Password and email or phone required" });
-    }
-
-    const query = email ? { email } : { whatsappPhone };
-    const user = await User.findOne(query);
-    if (!user || !user.password) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-
-    const token = jwt.sign(
-      { userId: user._id, role: user.role },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-
-    return res.json({
-      message: "Login successful",
-      token,
-      user: {
-        _id: user._id,
-        companyName: user.companyName,
-        role: user.role,
-        email: user.email,
-        whatsappPhone: user.whatsappPhone,
-      },
-    });
-  } catch (err) {
-    console.error("login error:", err);
-    return res.status(500).json({ message: "Server error" });
-  }
-};
-
-/**
- * POST /api/auth/admin/login
- * Sirf admin / staff roles ko allow karega
- */
+// ================================
+// ✅ MULTI ROLE STAFF LOGIN
+// ================================
 export const adminLogin = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+  const { email, password, role } = req.body;
 
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required" });
-    }
-
-    // Jo roles tum admin dashboard me use kar rahe ho:
-    const STAFF_ROLES = ["admin", "manager", "accountant", "branch-head", "sales"];
-
-    const user = await User.findOne({
-      email,
-      role: { $in: STAFF_ROLES },
-    });
-
-    if (!user || !user.password) {
-      return res.status(400).json({ message: "Invalid admin credentials" });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid admin credentials" });
-    }
-
-    const token = jwt.sign(
-      { userId: user._id, role: user.role },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-
-    return res.json({
-      message: "Admin login successful",
-      token,
-      user: {
-        _id: user._id,
-        companyName: user.companyName,
-        role: user.role,
-        email: user.email,
-        whatsappPhone: user.whatsappPhone,
-      },
-    });
-  } catch (err) {
-    console.error("adminLogin error:", err);
-    return res.status(500).json({ message: "Server error" });
+  if (!email || !password || !role) {
+    return res
+      .status(400)
+      .json({ message: "Email, password and role are required" });
   }
+
+  // Frontend se branch-head aa raha ho to normalize
+  let normalizedRole = role;
+  if (normalizedRole === "branch-head") normalizedRole = "branchHead";
+
+  const allowedRoles = ["admin", "manager", "accountant", "branchHead", "sales"];
+
+  if (!allowedRoles.includes(normalizedRole)) {
+    return res.status(403).json({ message: "Invalid role selection" });
+  }
+
+  // Ab specific role ke saath user dhoondho
+  const user = await User.findOne({ email, role: normalizedRole });
+
+  if (!user) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
+
+  const isMatch = await bcrypt.compare(password, user.password || "");
+  if (!isMatch) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
+
+  const token = signToken(user._id);
+
+  return res.json({
+    token,
+    user: {
+      id: user._id,
+      name: user.name || user.companyName || "",
+      email: user.email,
+      role: user.role,
+    },
+  });
 };
