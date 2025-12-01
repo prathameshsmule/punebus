@@ -52,12 +52,12 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // 🔹 Multer se aayi files (routes/auth.js me upload.fields laga hai)
+    // 🔹 Multer se aayi files (fields: aadharPdf, bankPdf, certificatePdf)
     const aadharFile = req.files?.aadharPdf?.[0];
     const bankFile = req.files?.bankPdf?.[0];
     const certFile = req.files?.certificatePdf?.[0];
 
-    // NOTE: storage uploads/docs hai, aur app.use("/uploads", ...) laga hai
+    // Jo URL frontend use karega – /uploads se start
     const aadharPdfUrl = aadharFile
       ? `/uploads/docs/${aadharFile.filename}`
       : undefined;
@@ -90,7 +90,7 @@ export const registerUser = async (req, res) => {
       email: email || undefined,
       password: hashedPassword,
 
-      // ⭐ PDFs ke URLs – schema se match
+      // ⭐ yahan direct schema wale fields me save kar rahe hain
       aadharPdfUrl,
       bankPdfUrl,
       certificatePdfUrl,
@@ -101,7 +101,7 @@ export const registerUser = async (req, res) => {
       user,
     });
   } catch (err) {
-    console.error("[registerUser] error:", err);
+    console.error(err);
 
     if (err.code === 11000) {
       return res.status(400).json({ message: "Email already exists" });
@@ -111,57 +111,5 @@ export const registerUser = async (req, res) => {
       message: "Server error",
       error: err.message,
     });
-  }
-};
-
-// ================================
-// ✅ MULTI ROLE STAFF LOGIN
-// ================================
-export const adminLogin = async (req, res) => {
-  try {
-    const { email, password, role } = req.body;
-
-    if (!email || !password || !role) {
-      return res
-        .status(400)
-        .json({ message: "Email, password and role are required" });
-    }
-
-    // Frontend se branch-head aa raha ho to normalize
-    let normalizedRole = role;
-    if (normalizedRole === "branch-head") normalizedRole = "branchHead";
-
-    const allowedRoles = ["admin", "manager", "accountant", "branchHead", "sales"];
-
-    if (!allowedRoles.includes(normalizedRole)) {
-      return res.status(403).json({ message: "Invalid role selection" });
-    }
-
-    // Ab specific role ke saath user dhoondho
-    const user = await User.findOne({ email, role: normalizedRole });
-
-    if (!user) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password || "");
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    const token = signToken(user._id);
-
-    return res.json({
-      token,
-      user: {
-        id: user._id,
-        name: user.name || user.companyName || "",
-        email: user.email,
-        role: user.role,
-      },
-    });
-  } catch (err) {
-    console.error("[adminLogin] error:", err);
-    return res.status(500).json({ message: "Server error" });
   }
 };
