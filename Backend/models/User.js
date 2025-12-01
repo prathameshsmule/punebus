@@ -1,5 +1,4 @@
 // models/User.js
-
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
@@ -45,5 +44,6 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// ESM style export
-export const User = mongoose.model("User", userSchema);
+// 👇 yahi sahi pattern hai
+const User = mongoose.model("User", userSchema);
+export default User;
