@@ -10,16 +10,16 @@ const signToken = (userId) => {
   });
 };
 
-// ✅ NEW: Helper to build base URL for file links
+// ✅ Helper to build base URL for file links
 const getBaseUrl = (req) => {
-  // If you set this in .env (recommended):
-  // BACKEND_BASE_URL=https://your-backend-domain.com
+  // .env madhe he set kar:
+  // BACKEND_BASE_URL=https://punebus.com
   if (process.env.BACKEND_BASE_URL) {
     // remove trailing slash if any
     return process.env.BACKEND_BASE_URL.replace(/\/+$/, "");
   }
 
-  // fallback – works on localhost or simple deployments
+  // fallback – localhost / simple deployment
   return `${req.protocol}://${req.get("host")}`;
 };
 
@@ -70,18 +70,22 @@ export const registerUser = async (req, res) => {
     const bankFile = req.files?.bankPdf?.[0];
     const certFile = req.files?.certificatePdf?.[0];
 
-    // ✅ NEW: base URL banaya
+    // ✅ base URL banaya
     const baseUrl = getBaseUrl(req);
 
-    // ✅ Ye URLs ab FULL absolute honge (e.g. https://api.punebus.com/uploads/docs/xyz.pdf)
+    // ✅ IMPORTANT: backend app.js me /api/uploads static serve hota hai
+    // isliye yaha /api/uploads use karne wale
+    const uploadsPath = "/api/uploads";
+
+    // e.g. https://punebus.com/api/uploads/docs/xyz.pdf
     const aadharPdfUrl = aadharFile
-      ? `${baseUrl}/uploads/docs/${aadharFile.filename}`
+      ? `${baseUrl}${uploadsPath}/docs/${aadharFile.filename}`
       : undefined;
     const bankPdfUrl = bankFile
-      ? `${baseUrl}/uploads/docs/${bankFile.filename}`
+      ? `${baseUrl}${uploadsPath}/docs/${bankFile.filename}`
       : undefined;
     const certificatePdfUrl = certFile
-      ? `${baseUrl}/uploads/docs/${certFile.filename}`
+      ? `${baseUrl}${uploadsPath}/docs/${certFile.filename}`
       : undefined;
 
     let hashedPassword = undefined;
