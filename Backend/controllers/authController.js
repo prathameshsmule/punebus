@@ -10,6 +10,19 @@ const signToken = (userId) => {
   });
 };
 
+// ✅ NEW: Helper to build base URL for file links
+const getBaseUrl = (req) => {
+  // If you set this in .env (recommended):
+  // BACKEND_BASE_URL=https://your-backend-domain.com
+  if (process.env.BACKEND_BASE_URL) {
+    // remove trailing slash if any
+    return process.env.BACKEND_BASE_URL.replace(/\/+$/, "");
+  }
+
+  // fallback – works on localhost or simple deployments
+  return `${req.protocol}://${req.get("host")}`;
+};
+
 // STAFF roles list (sirf admin create karega)
 const STAFF_ROLES = ["manager", "accountant", "branchHead", "sales"];
 
@@ -57,13 +70,18 @@ export const registerUser = async (req, res) => {
     const bankFile = req.files?.bankPdf?.[0];
     const certFile = req.files?.certificatePdf?.[0];
 
-    // Ye URLs DB me store honge, admin dashboard list me dikhenge
+    // ✅ NEW: base URL banaya
+    const baseUrl = getBaseUrl(req);
+
+    // ✅ Ye URLs ab FULL absolute honge (e.g. https://api.punebus.com/uploads/docs/xyz.pdf)
     const aadharPdfUrl = aadharFile
-      ? `/uploads/docs/${aadharFile.filename}`
+      ? `${baseUrl}/uploads/docs/${aadharFile.filename}`
       : undefined;
-    const bankPdfUrl = bankFile ? `/uploads/docs/${bankFile.filename}` : undefined;
+    const bankPdfUrl = bankFile
+      ? `${baseUrl}/uploads/docs/${bankFile.filename}`
+      : undefined;
     const certificatePdfUrl = certFile
-      ? `/uploads/docs/${certFile.filename}`
+      ? `${baseUrl}/uploads/docs/${certFile.filename}`
       : undefined;
 
     let hashedPassword = undefined;
