@@ -35,7 +35,12 @@ const uploadRoot = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadRoot)) {
   fs.mkdirSync(uploadRoot, { recursive: true });
 }
+
+// ✅ LOCAL dev साठी थेट /uploads चालू ठेव
 app.use("/uploads", express.static(uploadRoot));
+
+// ✅ PRODUCTION साठी – कारण Hostinger फक्त /api proxy करतो
+app.use("/api/uploads", express.static(uploadRoot));
 
 // DB connect
 connectDB(process.env.MONGO_URI || "mongodb://localhost:27017/Punebus");
