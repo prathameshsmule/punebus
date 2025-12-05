@@ -161,69 +161,73 @@ const Navbar = () => {
           </div>
 
           <nav className={`links ${mobileMenuOpen ? "active" : ""}`}>
-            <Link
-              to="/"
-              onClick={closeMobileMenu}
-              className={isActive("/") ? "active" : ""}
-            >
-              Home
-            </Link>
-            <Link
-              to="/services"
-              onClick={closeMobileMenu}
-              className={isActive("/services") ? "active" : ""}
-            >
-              Services
-            </Link>
-            <Link
-              to="/register"
-              onClick={closeMobileMenu}
-              className={isActive("/register") ? "active" : ""}
-            >
-              Register
-            </Link>
+  <Link
+    to="/"
+    onClick={closeMobileMenu}
+    className={isActive("/") ? "active" : ""}
+  >
+    Home
+  </Link>
 
-            {/* ✅ ADMIN — ONLY EMOJI */}
-            {!admin && (
-              <Link
-                to="/admin/login"
-                onClick={closeMobileMenu}
-                className={
-                  isActive("/admin/login") ? "active with-icon" : "with-icon"
-                }
-                aria-label="Admin Login"
-              >
-                🛡️
-              </Link>
-            )}
+  <Link
+    to="/services"
+    onClick={closeMobileMenu}
+    className={isActive("/services") ? "active" : ""}
+  >
+    Services
+  </Link>
 
-            {admin && (
-              <Link
-                to="/admin"
-                onClick={closeMobileMenu}
-                className={
-                  isActive("/admin") ? "active with-icon" : "with-icon"
-                }
-                aria-label="Admin Dashboard"
-              >
-                🛡️
-              </Link>
-            )}
+  {/* 🔽 Register sirf jab user ya admin login ho */}
+  {(user || admin) && (
+    <Link
+      to="/register"
+      onClick={closeMobileMenu}
+      className={isActive("/register") ? "active" : ""}
+    >
+      Register
+    </Link>
+  )}
 
-            {(user || admin) && (
-              <button className="btn-logout" onClick={handleLogout}>
-                Logout
-              </button>
-            )}
+  {/* ✅ ADMIN — ONLY EMOJI */}
+  {!admin && (
+    <Link
+      to="/admin/login"
+      onClick={closeMobileMenu}
+      className={
+        isActive("/admin/login") ? "active with-icon" : "with-icon"
+      }
+      aria-label="Admin Login"
+    >
+      🛡️
+    </Link>
+  )}
 
-            <button
-              className="btn-enquiry highlight with-icon"
-              onClick={openEnquiry}
-              aria-haspopup="dialog"
-            >
-              Enquiry
-            </button>
-          </nav>
+  {admin && (
+    <Link
+      to="/admin"
+      onClick={closeMobileMenu}
+      className={isActive("/admin") ? "active with-icon" : "with-icon"}
+      aria-label="Admin Dashboard"
+    >
+      🛡️
+    </Link>
+  )}
+
+  {(user || admin) && (
+    <button className="btn-logout" onClick={handleLogout}>
+      Logout
+    </button>
+  )}
+
+  <button
+    className="btn-enquiry highlight with-icon"
+    onClick={openEnquiry}
+    aria-haspopup="dialog"
+  >
+    Enquiry
+  </button>
+</nav>
+
         </div>
       </header>
 
