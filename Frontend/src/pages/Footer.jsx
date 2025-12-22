@@ -1,4 +1,3 @@
-// Footer.jsx
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { Phone, Mail, MapPin, Facebook, Instagram } from "lucide-react";
@@ -253,8 +252,6 @@ export default function Footer() {
                   gap: "0.75rem",
                 }}
               >
-               
-
                 <a
                   href="mailto:punebus2@gmail.com"
                   style={{
@@ -294,13 +291,11 @@ export default function Footer() {
                     Karnataka 560008
                   </span>
                 </div>
-
-                
               </div>
             </div>
           </div>
 
-          {/* Bottom Bar */}
+          {/* Bottom Bar - Mobile Responsive Update */}
           <div
             style={{
               borderTop: "1px solid #334155",
@@ -316,13 +311,29 @@ export default function Footer() {
           >
             <p>&copy; 2025 Pune Bus. All rights reserved.</p>
 
-            <div style={{ display: "flex", gap: "2rem" }}>
-              <a href="#" style={{ color: "#94a3b8", textDecoration: "none" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: "1.5rem", // Mobile ke liye gap thoda kam kiya (pehle 2rem tha)
+                flexWrap: "wrap",
+                justifyContent: "center",
+                lineHeight: "1.8", // Mobile pe lines ke beech space
+              }}
+            >
+              <a
+                href="/privacy"
+                style={{ color: "#94a3b8", textDecoration: "none" }}
+              >
                 Privacy Policy
               </a>
-              <a href="#" style={{ color: "#94a3b8", textDecoration: "none" }}>
-                Terms of Service
+              <a
+                href="/refund-policy"
+                style={{ color: "#94a3b8", textDecoration: "none" }}
+              >
+                Refund & Cancellation Policy
               </a>
+              {/* Link Uncommented aur 'Terms & Conditions' add kiya */}
+              
             </div>
           </div>
         </div>
