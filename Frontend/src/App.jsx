@@ -18,6 +18,9 @@ import SalesDashboard from "./pages/SalesDashboard";
 
 import EnquiryForm from "./pages/EnquiryForm";
 
+//privacy policy
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import RefundPolicy from "./pages/RefundPolicy";
 const App = () => (
   <div>
     <Navbar />
@@ -41,6 +44,9 @@ const App = () => (
             </ProtectedStaffRoute>
           }
         />
+        {/* NEW LEGAL ROUTES */}
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/refund-policy" element={<RefundPolicy />} />
 
         {/* ENQUIRY PAGE */}
         <Route path="/enquiry" element={<EnquiryForm />} />
